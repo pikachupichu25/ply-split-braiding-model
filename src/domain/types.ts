@@ -23,7 +23,7 @@ export type Repeat = {
 export type PatternAst = {
   colors: string[];
   rows: RowInstruction[];
-  repeat?: Repeat;
+  repeats: Repeat[];
 };
 
 export type ParseResult = {

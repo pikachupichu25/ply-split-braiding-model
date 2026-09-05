@@ -12,7 +12,7 @@ This format records a SCOT pattern as:
 
 1. the initial colour of each cord;
 2. numbered rows of splitting instructions; and
-3. an optional repeat instruction.
+3. optional repeat instructions.
 
 The format is intended to be easy for a maker to read and simple for software to parse. It is a convention for this project, not a universal ply-split braiding standard.
 
@@ -135,7 +135,7 @@ For each row, the program or maker must:
 5. tighten and arrange the row;
 6. turn the braid over.
 
-## 6. Repeat instruction
+## 6. Repeat instructions
 
 ### Repeating until the maker stops
 
@@ -171,6 +171,24 @@ Therefore:
 
 produces 20 worked rows, not 22.
 
+### Multiple repeat sections
+
+A pattern may contain multiple non-overlapping repeat ranges. Written rows outside a
+repeat range are worked once, while each repeat range uses its own fixed count or the
+preview count when its count is omitted.
+
+```text
+1 1>2,3,4
+2 8>7,6,5,4
+[repeat 1-2 x 6]
+
+3 4>5,6,7
+4 1>2,3,4
+[repeat 3-4 x 6]
+```
+
+Repeat ranges cannot overlap or run backwards through the written rows.
+
 ## 7. Comments and blank lines
 
 Blank lines are ignored.
@@ -196,9 +214,7 @@ The following simplified EBNF defines version 0.1:
 ```ebnf
 pattern          = { blank-line | comment-line },
                    color-line, line-end,
-                   { blank-line | comment-line | row-line },
-                   [ repeat-line ],
-                   { blank-line | comment-line } ;
+                   { blank-line | comment-line | row-line | repeat-line } ;
 
 color-line       = "color", spacing, ":", spacing, color-sequence ;
 color-sequence   = color-symbol, { color-symbol } ;
@@ -239,12 +255,13 @@ A valid version 0.1 pattern must satisfy all of these rules:
 6. A splittee cannot occur more than once in the same row.
 7. The splittee list contains at least one cord.
 8. Splittees must be listed in physical encounter order.
-9. The repeat start and end rows must exist.
-10. The repeat start must not be greater than the repeat end.
-11. A fixed repeat count must be a positive integer.
-12. The simulated cord paths must make every requested split physically reachable.
+9. Every repeat start and end row must exist.
+10. A repeat start must not be greater than its end.
+11. Repeat ranges must not overlap.
+12. A fixed repeat count must be a positive integer.
+13. The simulated cord paths must make every requested split physically reachable.
 
-Rules 1-11 are syntax and reference checks. Rule 12 requires structural simulation; passing the text parser alone does not prove that a braid is physically makeable.
+Rules 1-12 are syntax and reference checks. Rule 13 requires structural simulation; passing the text parser alone does not prove that a braid is physically makeable.
 
 ## 10. Canonical formatting
 
@@ -255,7 +272,7 @@ When software saves or reformats a pattern, it should produce:
 - one space between the row number and instruction;
 - no spaces around `>` or commas;
 - one blank line after `color:`;
-- one blank line before the repeat instruction;
+- one blank line before each repeat instruction;
 - lowercase keyword `repeat`;
 - rows preserved in numeric order.
 
@@ -302,11 +319,13 @@ The canonical example is equivalent to:
       "turnAfter": true
     }
   ],
-  "repeat": {
-    "fromRow": 1,
-    "throughRow": 2,
-    "count": null
-  }
+  "repeats": [
+    {
+      "fromRow": 1,
+      "throughRow": 2,
+      "count": null
+    }
+  ]
 }
 ```
 

@@ -1,36 +1,49 @@
 import { useEffect, useMemo, useState } from 'react';
-import { chevronPattern } from './examples/chevron';
+import { defaultSample, samplePatterns } from './examples';
+import { findFullCycle } from './domain/cycle';
+import { buildFinishedLayout } from './domain/finishedLayout';
+import { buildFinishedSurfaces } from './domain/finishedSurface';
 import { parsePattern } from './domain/parser';
 import { simulatePattern } from './domain/simulate';
-import type { Cord, Face, Simulation, SplitEvent } from './domain/types';
+import type { Face, Simulation, SplitEvent } from './domain/types';
 
 const palette = ['#d76b52', '#77b6c9', '#d3a448', '#6f8f65', '#a47aa3', '#dd8f45'];
 const savedPatternKey = 'scot-braid-studio-pattern';
 
 export default function App() {
-  const [source, setSource] = useState(() => localStorage.getItem(savedPatternKey) ?? chevronPattern);
+  const [source, setSource] = useState(() => localStorage.getItem(savedPatternKey) ?? defaultSample.source);
   const [previewRepeats, setPreviewRepeats] = useState(4);
-  const [selectedEvent, setSelectedEvent] = useState(0);
-  const [view, setView] = useState<'result' | 'braid' | 'construction'>('result');
+  const [lengthMode, setLengthMode] = useState<'cycle' | 'manual'>('cycle');
+  const [view, setView] = useState<'finished-v1' | 'finished-dev' | 'braid'>('finished-v1');
   const [mirrorFace, setMirrorFace] = useState<Face>('front');
+  const [finishedAngle, setFinishedAngle] = useState(30);
+  const [finishedTip, setFinishedTip] = useState(30);
+  const [previewWidth, setPreviewWidth] = useState(25);
 
   const parsed = useMemo(() => parsePattern(source), [source]);
+  const fullCycle = useMemo(
+    () => (parsed.pattern ? findFullCycle(parsed.pattern) : undefined),
+    [parsed.pattern],
+  );
+  const hasOpenRepeat = parsed.pattern?.repeats.some((repeat) => repeat.count === undefined) ?? false;
+  const repeats = lengthMode === 'cycle' && fullCycle ? fullCycle.repeats : previewRepeats;
   const simulation = useMemo(
-    () => (parsed.pattern ? simulatePattern(parsed.pattern, previewRepeats) : emptySimulation()),
-    [parsed.pattern, previewRepeats],
+    () => (parsed.pattern ? simulatePattern(parsed.pattern, repeats) : emptySimulation()),
+    [parsed.pattern, repeats],
   );
   const diagnostics = [...parsed.diagnostics, ...simulation.diagnostics];
   const allEvents = simulation.events;
-  const activeEventIndex = Math.max(0, Math.min(selectedEvent, Math.max(0, allEvents.length - 1)));
-  const activeEvent = allEvents[activeEventIndex];
 
   useEffect(() => {
     localStorage.setItem(savedPatternKey, source);
   }, [source]);
 
-  useEffect(() => {
-    setSelectedEvent((current) => Math.min(current, Math.max(0, allEvents.length - 1)));
-  }, [allEvents.length]);
+  const activeSample = samplePatterns.find((sample) => sample.source === source);
+  const loadSample = (id: string) => {
+    const sample = samplePatterns.find((item) => item.id === id);
+    if (!sample) return;
+    setSource(sample.source);
+  };
 
   const colorMap = useMemo(() => buildColorMap(parsed.pattern?.colors ?? []), [parsed.pattern?.colors]);
   const status = diagnostics.some((diagnostic) => diagnostic.severity === 'error')
@@ -60,8 +73,20 @@ export default function App() {
               <p className="eyebrow">01 · notation</p>
               <h2>Written pattern</h2>
             </div>
-            <button className="text-button" onClick={() => setSource(chevronPattern)}>Reset sample</button>
+            <label className="sample-picker">
+              <span>Sample</span>
+              <select
+                value={activeSample?.id ?? ''}
+                onChange={(event) => loadSample(event.target.value)}
+              >
+                {!activeSample && <option value="">Edited draft</option>}
+                {samplePatterns.map((sample) => (
+                  <option key={sample.id} value={sample.id}>{sample.name}</option>
+                ))}
+              </select>
+            </label>
           </div>
+          <p className="sample-summary">{activeSample?.summary ?? 'Edited draft — pick a sample to start again.'}</p>
 
           <label className="editor-label" htmlFor="pattern-source">SCOT source</label>
           <textarea
@@ -111,9 +136,9 @@ export default function App() {
             </div>
             <div className="toolbar" aria-label="Visualization controls">
               <div className="toggle-group">
-                <button className={view === 'result' ? 'is-active' : ''} onClick={() => setView('result')}>Finished</button>
+                <button className={view === 'finished-v1' ? 'is-active' : ''} onClick={() => setView('finished-v1')}>Finished v1</button>
+                <button className={view === 'finished-dev' ? 'is-active' : ''} onClick={() => setView('finished-dev')}>Finished (dev)</button>
                 <button className={view === 'braid' ? 'is-active' : ''} onClick={() => setView('braid')}>Braid</button>
-                <button className={view === 'construction' ? 'is-active' : ''} onClick={() => setView('construction')}>Draft</button>
               </div>
               <div className="toggle-group">
                 <button className={mirrorFace === 'front' ? 'is-active' : ''} onClick={() => setMirrorFace('front')}>Front</button>
@@ -123,47 +148,67 @@ export default function App() {
           </div>
 
           <div className="canvas-meta">
-            <span>{view === 'result' ? `flat surface chart · ${mirrorFace} face` : `fixed lanes · ${mirrorFace} display`}</span>
-            <span>{view === 'result' ? `${simulation.totalRows} courses · ${allEvents.length} splits` : activeEvent ? `working ${activeEvent.face} · row ${activeEvent.sourceRow}` : 'no active split'}</span>
+            <span>{view === 'finished-v1'
+              ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v1`
+              : view === 'finished-dev'
+                ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · development`
+                : `fixed lanes · ${mirrorFace} display`}</span>
+            <span>{`${simulation.totalRows} courses · ${allEvents.length} splits`}</span>
           </div>
-          {view === 'result' ? (
-            <FinishedBraidPreview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} />
+          {view === 'finished-v1' ? (
+            <FinishedV1Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
+          ) : view === 'finished-dev' ? (
+            <FinishedBraidPreview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
           ) : (
-            <BraidDiagram
-              simulation={simulation}
-              colors={colorMap}
-              selectedEvent={activeEventIndex}
-              onSelectEvent={setSelectedEvent}
-              view={view}
-              mirrorFace={mirrorFace}
-            />
+            <BraidDiagram simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} />
           )}
 
-          {view === 'result' ? (
-            <p className="finished-caption">Rows worked into the same course of fabric share one band, so every cord runs obliquely and no lane sits out a row. A splitter is hidden for as long as it runs inside the cords it splits, showing only where it leaves the face and where it comes back out. Switch to Braid or Draft to inspect the construction.</p>
+          {view === 'finished-v1' ? (
+            <p className="finished-caption">Finished v1 is the clean sharp-parallelogram surface: one splittee-coloured cell per split, with no transition triangles, dotted edges, or overlap additions.</p>
+          ) : view === 'finished-dev' ? (
+            <p className="finished-caption">Development preview: transition edges extend to their intersection in the neighbouring column, filling the extra triangle with the continuing cord’s colour.</p>
           ) : (
-            <div className="stepper">
-              <div className="step-copy">
-                <p className="eyebrow">Active split</p>
-                <strong>{activeEvent ? describeEvent(activeEvent) : 'Enter a valid row to begin'}</strong>
-                <span>{activeEvent ? `Event ${activeEvent.eventIndex + 1} of ${allEvents.length}` : '—'}</span>
-              </div>
-              <div className="step-actions">
-                <button aria-label="Previous split" disabled={activeEventIndex === 0 || !allEvents.length} onClick={() => setSelectedEvent((index) => Math.max(0, index - 1))}>←</button>
-                <button aria-label="Next split" disabled={activeEventIndex >= allEvents.length - 1 || !allEvents.length} onClick={() => setSelectedEvent((index) => Math.min(allEvents.length - 1, index + 1))}>→</button>
-              </div>
-            </div>
+            <p className="finished-caption">Every split in the preview length is drawn at once. Each cord keeps its colour along its whole path, and each splitter stays visible behind its splittee at their crossing.</p>
           )}
         </section>
       </section>
 
       <footer className="control-deck">
-        <div>
-          <p className="eyebrow">Preview length</p>
-          <label className="repeat-control">
-            <input type="range" min="1" max="8" value={previewRepeats} onChange={(event) => setPreviewRepeats(Number(event.target.value))} />
-            <span>{previewRepeats} repeats</span>
-          </label>
+        <div className="preview-controls">
+          <div>
+            <p className="eyebrow">Preview length</p>
+            <div className="toggle-group toggle-group--inverse">
+              <button className={lengthMode === 'cycle' ? 'is-active' : ''} onClick={() => setLengthMode('cycle')}>Full cycle</button>
+              <button className={lengthMode === 'manual' ? 'is-active' : ''} onClick={() => setLengthMode('manual')}>Manual</button>
+            </div>
+            <label className="repeat-control">
+              <input aria-label="Preview repeats" type="range" min="1" max="16" value={previewRepeats} disabled={!hasOpenRepeat || (lengthMode === 'cycle' && Boolean(fullCycle))} onChange={(event) => setPreviewRepeats(Number(event.target.value))} />
+              <span>{describeLength(lengthMode, repeats, fullCycle, parsed.pattern?.repeats.length ?? 0, hasOpenRepeat, simulation.totalRows)}</span>
+            </label>
+          </div>
+          {view !== 'braid' && <>
+            <div>
+              <p className="eyebrow">Cord slant</p>
+              <label className="angle-control">
+                <input aria-label="Cord slant in degrees" type="range" min="10" max="60" value={finishedAngle} onChange={(event) => setFinishedAngle(Number(event.target.value))} />
+                <span>{finishedAngle}°</span>
+              </label>
+            </div>
+            <div>
+              <p className="eyebrow">Cord tip</p>
+              <label className="angle-control">
+                <input aria-label="Cell tip angle in degrees" type="range" min="10" max="90" value={finishedTip} onChange={(event) => setFinishedTip(Number(event.target.value))} />
+                <span>{finishedTip}°</span>
+              </label>
+            </div>
+            <div>
+              <p className="eyebrow">Preview width</p>
+              <label className="angle-control">
+                <input aria-label="Finished preview width" type="range" min="15" max="150" step="5" value={previewWidth} onChange={(event) => setPreviewWidth(Number(event.target.value))} />
+                <span>{previewWidth}%</span>
+              </label>
+            </div>
+          </>}
         </div>
         <p className="method-note">Every numbered operation is resolved against the cord currently occupying that lane. The display preserves the cord’s colour and continuous path.</p>
         <button className="export-button" onClick={() => downloadPattern(source)}>Download .scot <span aria-hidden="true">↓</span></button>
@@ -175,13 +220,10 @@ export default function App() {
 type DiagramProps = {
   simulation: Simulation;
   colors: Map<string, string>;
-  selectedEvent: number;
-  onSelectEvent: (index: number) => void;
-  view: 'braid' | 'construction';
   mirrorFace: Face;
 };
 
-function BraidDiagram({ simulation, colors, selectedEvent, onSelectEvent, view, mirrorFace }: DiagramProps) {
+function BraidDiagram({ simulation, colors, mirrorFace }: DiagramProps) {
   const laneCount = simulation.snapshots[0]?.lanes.length ?? 8;
   const eventCount = simulation.events.length;
   const laneGap = 82;
@@ -200,10 +242,10 @@ function BraidDiagram({ simulation, colors, selectedEvent, onSelectEvent, view, 
   };
 
   return (
-    <div className={`diagram-frame diagram-frame--${view}`}>
+    <div className="diagram-frame diagram-frame--braid">
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="diagram-title diagram-description">
         <title id="diagram-title">SCOT braid course trace</title>
-        <desc id="diagram-description">A lane diagram of stable cords moving through the selected SCOT splitting sequence.</desc>
+        <desc id="diagram-description">A lane diagram of cords moving through the whole SCOT splitting sequence. In the braid view, each splitter remains visible behind its splittee at their crossing.</desc>
         <defs>
           <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="3" stdDeviation="2" floodColor="#17293d" floodOpacity="0.24" />
@@ -211,25 +253,28 @@ function BraidDiagram({ simulation, colors, selectedEvent, onSelectEvent, view, 
         </defs>
         <rect x="0" y="0" width={width} height={height} fill="transparent" />
         {Array.from({ length: laneCount }, (_, laneIndex) => (
-          <g key={`lane-${laneIndex}`}>
-            <line className="lane-guide" x1={xAt(laneIndex)} y1="42" x2={xAt(laneIndex)} y2={height - 24} />
-            {view === 'construction' && <text className="lane-label" x={xAt(laneIndex)} y="28">{laneIndex + 1}</text>}
-          </g>
+          <line key={`lane-${laneIndex}`} className="lane-guide" x1={xAt(laneIndex)} y1="42" x2={xAt(laneIndex)} y2={height - 24} />
         ))}
-        {simulation.events.map((event, eventIndex) => {
-          const y = yAt(eventIndex + 1);
-          if (view !== 'construction') return null;
-          return <line key={`row-${eventIndex}`} className="row-guide" x1="28" x2={width - 28} y1={y} y2={y} />;
-        })}
         {cordIds.map((cordId) => (
           <CordTrack
-            key={cordId}
+            key={`splitter-${cordId}`}
             cordId={cordId}
             snapshots={simulation.snapshots}
             events={simulation.events}
             colors={colors}
-            activeIndex={selectedEvent}
             pointFor={pointFor}
+            layer="splitter"
+          />
+        ))}
+        {cordIds.map((cordId) => (
+          <CordTrack
+            key={`surface-${cordId}`}
+            cordId={cordId}
+            snapshots={simulation.snapshots}
+            events={simulation.events}
+            colors={colors}
+            pointFor={pointFor}
+            layer="surface"
           />
         ))}
         {simulation.events.map((event, eventIndex) => {
@@ -237,30 +282,14 @@ function BraidDiagram({ simulation, colors, selectedEvent, onSelectEvent, view, 
           const after = pointFor(event.splitterId, eventIndex + 1);
           const x = (before.x + after.x) / 2;
           const y = (before.y + after.y) / 2;
-          const selected = eventIndex === selectedEvent;
-          const future = eventIndex > selectedEvent;
           return (
-            <g
-              key={`event-${event.eventIndex}`}
-              className={`split-marker ${selected ? 'is-selected' : ''} ${future ? 'is-future' : ''}`}
-              onClick={() => onSelectEvent(eventIndex)}
-              role="button"
-              tabIndex={0}
-              aria-label={`Select ${describeEvent(event)}`}
-              onKeyDown={(keyboardEvent) => {
-                if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') onSelectEvent(eventIndex);
-              }}
-            >
-              <circle cx={x} cy={y} r={selected ? 12 : 8} />
+            <g key={`event-${event.eventIndex}`} className="split-marker">
+              <circle cx={x} cy={y} r="8" />
               <path d={`M ${x - 5} ${y - 2} Q ${x} ${y - 7} ${x + 5} ${y - 2}`} />
               <path d={`M ${x - 5} ${y + 2} Q ${x} ${y + 7} ${x + 5} ${y + 2}`} />
+              <title>{describeEvent(event)}</title>
             </g>
           );
-        })}
-        {view === 'construction' && simulation.events.map((event, eventIndex) => {
-          const y = yAt(eventIndex + 1) + 4;
-          const label = `R${event.sourceRow}.${event.splitIndex}`;
-          return <text className="row-label" key={`label-${eventIndex}`} x={width - 22} y={y}>{label}</text>;
         })}
       </svg>
       {!eventCount && <div className="empty-canvas">Your valid SCOT path will appear here.</div>}
@@ -268,194 +297,147 @@ function BraidDiagram({ simulation, colors, selectedEvent, onSelectEvent, view, 
   );
 }
 
-type FinishedProps = Pick<DiagramProps, 'simulation' | 'colors' | 'mirrorFace'>;
+type FinishedProps = Pick<DiagramProps, 'simulation' | 'colors' | 'mirrorFace'> & {
+  theta?: number;
+  tipAngle?: number;
+  widthScale?: number;
+};
 
-function FinishedBraidPreview({ simulation, colors, mirrorFace }: FinishedProps) {
-  const laneCount = simulation.snapshots[0]?.lanes.length ?? 8;
-  const courses = surfaceBands(simulation);
-  const laneGap = 26;
-  const courseHeight = 40;
-  const capHeight = 14;
-  const gutter = 40;
-  const footer = 28;
-  const padTop = 12;
-  const padRight = 14;
-  const bedWidth = laneCount * laneGap;
-  const bedHeight = capHeight * 2 + Math.max(1, courses.length) * courseHeight;
-  const width = gutter + bedWidth + padRight;
-  const height = padTop + bedHeight + footer;
-
-  const laneLeft = (laneIndex: number) => {
-    const displayIndex = mirrorFace === 'front' ? laneIndex : laneCount - laneIndex - 1;
-    return gutter + displayIndex * laneGap;
-  };
-  const courseTop = (courseIndex: number) => padTop + capHeight + courseIndex * courseHeight;
-  const colorOf = (cord: Cord | undefined) => colors.get(cord?.colorSymbol ?? '') ?? '#d3a448';
-  const band = (fromLane: number, toLane: number, top: number, bottom: number) => {
-    const start = laneLeft(fromLane);
-    const end = laneLeft(toLane);
-    return `${start},${top} ${start + laneGap},${top} ${end + laneGap},${bottom} ${end},${bottom}`;
-  };
-
-  const startLanes = simulation.snapshots[0]?.lanes ?? [];
-  const endLanes = simulation.snapshots.at(-1)?.lanes ?? startLanes;
-  const pixelScale = 1.5;
+function FinishedV1Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1 }: FinishedProps) {
+  const layout = useMemo(() => buildFinishedLayout(simulation, { theta, tipAngle }), [simulation, theta, tipAngle]);
+  const startCords = new Map((simulation.snapshots[0]?.lanes ?? []).map((cord) => [cord.id, cord]));
+  const colorFor = (cordId: string) => colors.get(startCords.get(cordId)?.colorSymbol ?? '') ?? '#d3a448';
+  const faceTransform = mirrorFace === 'back' ? `translate(${layout.width} 0) scale(-1 1)` : undefined;
 
   return (
-    <div className="finished-preview">
-      <svg viewBox={`0 0 ${width} ${height}`} width={width * pixelScale} height={height * pixelScale} role="img" aria-labelledby="finished-title finished-description">
-        <title id="finished-title">Finished SCOT braid chart</title>
-        <desc id="finished-description">A flat chart of the finished braid. every cord is drawn as a straight oblique cell coloured by its own cord colour, rows worked into one course of fabric share a band, and each splitter disappears where it passes through the cords it splits, surfacing only where it leaves and rejoins the face.</desc>
-        <rect className="finished-bed" x={gutter} y={padTop} width={bedWidth} height={bedHeight} />
-
-        {startLanes.map((cord, laneIndex) => (
-          <polygon
-            key={`cap-start-${cord.id}`}
-            className="finished-cell"
-            fill={colorOf(cord)}
-            points={band(laneIndex, laneIndex, padTop, padTop + capHeight)}
-          />
-        ))}
-
-        {courses.map((course, courseIndex) => {
-          const before = simulation.snapshots[course.startStep]?.lanes ?? [];
-          const after = simulation.snapshots[course.endStep]?.lanes ?? before;
-          const top = courseTop(courseIndex);
-          const bottom = courseTop(courseIndex + 1);
-          const splitterIds = new Set(
-            simulation.events.slice(course.startStep, course.endStep).map((event) => event.splitterId),
-          );
-          const cells = before.map((cord, laneIndex) => ({
-            cord,
-            laneIndex,
-            toLane: after.findIndex((item) => item.id === cord.id),
-          })).filter((cell) => cell.toLane >= 0);
-          return (
-            <g key={`course-${courseIndex}`}>
-              {cells.filter((cell) => splitterIds.has(cell.cord.id)).map((cell) => (
-                <rect
-                  key={`buried-${cell.cord.id}`}
-                  className="finished-underlay"
-                  fill={colorOf(cell.cord)}
-                  x={Math.min(laneLeft(cell.laneIndex), laneLeft(cell.toLane))}
-                  y={top}
-                  width={Math.abs(laneLeft(cell.toLane) - laneLeft(cell.laneIndex)) + laneGap}
-                  height={bottom - top}
-                />
-              ))}
-              {cells.filter((cell) => !splitterIds.has(cell.cord.id)).map((cell) => (
-                <polygon key={cell.cord.id} className="finished-cell" fill={colorOf(cell.cord)} points={band(cell.laneIndex, cell.toLane, top, bottom)} />
-              ))}
-            </g>
-          );
-        })}
-
-        {endLanes.map((cord, laneIndex) => (
-          <polygon
-            key={`cap-end-${cord.id}`}
-            className="finished-cell"
-            fill={colorOf(cord)}
-            points={band(laneIndex, laneIndex, courseTop(courses.length), courseTop(courses.length) + capHeight)}
-          />
-        ))}
-
-        <rect className="finished-frame" x={gutter} y={padTop} width={bedWidth} height={bedHeight} />
-
-        {courses.map((course, courseIndex) => {
-          const top = courseTop(courseIndex);
-          const bottom = courseTop(courseIndex + 1);
-          return (
-            <g key={`course-label-${courseIndex}`}>
-              <line className="finished-tick" x1={gutter - 7} x2={gutter} y1={bottom} y2={bottom} />
-              <text className="finished-axis finished-row-label" x={gutter - 10} y={(top + bottom) / 2 + 3}>
-                {course.rows.length > 1 ? `${course.rows[0]}\u2013${course.rows.at(-1)}` : course.rows[0]}
-              </text>
-            </g>
-          );
-        })}
-
-        {Array.from({ length: laneCount }, (_, displayIndex) => {
-          const x = gutter + displayIndex * laneGap;
-          const label = mirrorFace === 'front' ? displayIndex + 1 : laneCount - displayIndex;
-          return (
-            <g key={`lane-box-${displayIndex}`}>
-              <rect className="finished-lane-box" x={x} y={padTop + bedHeight + 7} width={laneGap} height={16} />
-              <text className="finished-axis finished-lane-label" x={x + laneGap / 2} y={padTop + bedHeight + 18}>{label}</text>
-            </g>
-          );
-        })}
+    <div className="finished-preview finished-preview--v1">
+      <svg viewBox={`0 0 ${layout.width} ${layout.height}`} width={layout.width * widthScale} height={layout.height * widthScale} role="img" aria-labelledby="finished-v1-title finished-v1-description">
+        <title id="finished-v1-title">Finished SCOT parallelogram chart, version one</title>
+        <desc id="finished-v1-description">One sharp splittee-coloured parallelogram for every split event. This stable version has no added overlap or transition geometry.</desc>
+        <g transform={faceTransform}>
+          {layout.cells.map((cell) => {
+            const modelDirection = cell.event.toLane > cell.event.fromLane ? 'right' : 'left';
+            const displayDirection = mirrorFace === 'front' ? modelDirection : modelDirection === 'right' ? 'left' : 'right';
+            return (
+              <polygon
+                key={cell.event.eventIndex}
+                className="finished-split-cell"
+                points={cell.points.map((point) => `${point.x},${point.y}`).join(' ')}
+                fill={colorFor(cell.event.splitteeId)}
+                data-event-index={cell.event.eventIndex}
+                data-column={cell.column}
+                data-direction={displayDirection}
+              >
+                <title>{`${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`}</title>
+              </polygon>
+            );
+          })}
+        </g>
       </svg>
-      {!simulation.events.length && <div className="empty-canvas">Your finished braid preview will appear here.</div>}
+      {!simulation.events.length && <div className="empty-canvas">Your finished parallelogram preview will appear here.</div>}
     </div>
   );
 }
 
-// Consecutive written rows are worked into the same course of fabric as long as no cord
-// has to reverse direction. Merging them keeps every cord oblique instead of parking the
-// lanes an odd row never touches in a straight filler section.
-function surfaceBands(simulation: Simulation): Array<{ rows: number[]; startStep: number; endStep: number }> {
-  const bands: Array<{ rows: number[]; startStep: number; endStep: number }> = [];
-  courseBands(simulation).forEach((course) => {
-    const current = bands.at(-1);
-    if (current && travelsOneWay(simulation, current.startStep, current.endStep, course.endStep)) {
-      current.endStep = course.endStep;
-      current.rows.push(course.row);
-      return;
-    }
-    bands.push({ rows: [course.row], startStep: course.startStep, endStep: course.endStep });
-  });
-  return bands;
+function FinishedBraidPreview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1 }: FinishedProps) {
+  const layout = useMemo(
+    () => buildFinishedLayout(simulation, { theta, tipAngle }),
+    [simulation, theta, tipAngle],
+  );
+  const surfaces = useMemo(() => buildFinishedSurfaces(layout.cells), [layout]);
+  const startCords = new Map(
+    (simulation.snapshots[0]?.lanes ?? []).map((cord) => [cord.id, cord]),
+  );
+  const colorFor = (cordId: string) => {
+    const symbol = startCords.get(cordId)?.colorSymbol ?? '';
+    return colors.get(symbol) ?? '#d3a448';
+  };
+  const faceTransform = mirrorFace === 'back'
+    ? `translate(${layout.width} 0) scale(-1 1)`
+    : undefined;
+
+  return (
+    <div className="finished-preview">
+      <svg
+        viewBox={`0 0 ${layout.width} ${layout.height}`}
+        width={layout.width * widthScale}
+        height={layout.height * widthScale}
+        role="img"
+        aria-labelledby="finished-title finished-description"
+      >
+        <title id="finished-title">Finished SCOT craft surface</title>
+        <desc id="finished-description">One cord-coloured surface cell for every split. At changes in either direction between splitter and splittee, diagonal edges extend to their intersection in the neighbouring column. The extra triangle takes the colour of the ribbon extending across the seam; original split cells keep their shapes.</desc>
+        <g transform={faceTransform}>
+          {surfaces.map(({ cell, path, emergence, departure }) => {
+            const transitions = [emergence, departure].filter(t => t !== undefined);
+            const modelDirection = cell.event.toLane > cell.event.fromLane ? 'right' : 'left';
+            const displayDirection = mirrorFace === 'front'
+              ? modelDirection
+              : modelDirection === 'right' ? 'left' : 'right';
+            return (
+              <g key={cell.event.eventIndex}>
+                <path
+                  className={`finished-split-cell${emergence ? ' is-splitter-to-splittee' : ''}${departure ? ' is-splittee-to-splitter' : ''}`}
+                  d={path}
+                  fill={colorFor(cell.event.splitteeId)}
+                  data-event-index={cell.event.eventIndex}
+                  data-column={cell.column}
+                  data-direction={displayDirection}
+                  data-role-transition={transitions.map(t => t.kind).join(' ') || undefined}
+                  data-emerges-from-event={emergence?.hostEventIndex}
+                  data-departs-from-event={departure?.hostEventIndex}
+                >
+                  <title>{`${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`}</title>
+                </path>
+              </g>
+            );
+          })}
+          <g className="finished-transition-layer" aria-hidden="true">
+            {surfaces.flatMap(({ cell, emergence, departure }) =>
+              [emergence, departure].filter(transition => transition !== undefined).map(transition => (
+                <g key={`${cell.event.eventIndex}-${transition.kind}`} className="finished-transition" data-event-index={cell.event.eventIndex} data-transition-kind={transition.kind} data-transition-cord={transition.cordId} data-host-cord={transition.hostCordId} data-fill-cord={transition.fillCordId}>
+                  <path d={transition.triangle} fill={colorFor(transition.fillCordId)} />
+                  <path className="finished-transition-seam" d={transition.solidEdges} />
+                  <path className="finished-transition-seam" d={transition.seam} />
+                </g>
+              )),
+            )}
+          </g>
+        </g>
+      </svg>
+      {!simulation.events.length && <div className="empty-canvas">Your finished craft preview will appear here.</div>}
+    </div>
+  );
 }
 
-function travelsOneWay(simulation: Simulation, startStep: number, middleStep: number, endStep: number): boolean {
-  const start = simulation.snapshots[startStep]?.lanes ?? [];
-  const middle = simulation.snapshots[middleStep]?.lanes ?? [];
-  const end = simulation.snapshots[endStep]?.lanes ?? [];
-  return start.every((cord) => {
-    const first = Math.sign(middle.findIndex((item) => item.id === cord.id) - start.findIndex((item) => item.id === cord.id));
-    const second = Math.sign(end.findIndex((item) => item.id === cord.id) - middle.findIndex((item) => item.id === cord.id));
-    return first === 0 || second === 0 || first === second;
-  });
-}
-
-function courseBands(simulation: Simulation): Array<{ row: number; startStep: number; endStep: number }> {
-  const bands: Array<{ row: number; startStep: number; endStep: number }> = [];
-  simulation.events.forEach((event, index) => {
-    const current = bands.at(-1);
-    if (current && current.row === event.rowInstance) current.endStep = index + 1;
-    else bands.push({ row: event.rowInstance, startStep: index, endStep: index + 1 });
-  });
-  return bands;
-}
-
-function CordTrack({ cordId, snapshots, events, colors, activeIndex, pointFor }: {
+function CordTrack({ cordId, snapshots, events, colors, pointFor, layer }: {
   cordId: string;
   snapshots: Simulation['snapshots'];
   events: Simulation['events'];
   colors: Map<string, string>;
-  activeIndex: number;
   pointFor: (cordId: string, snapshotIndex: number) => { x: number; y: number };
+  layer: 'splitter' | 'surface';
 }) {
   const cord = snapshots[0]?.lanes.find((item) => item.id === cordId);
   if (!cord) return null;
   const color = colors.get(cord.colorSymbol) ?? '#d3a448';
   return (
-    <g className="cord-track" filter="url(#soft-shadow)">
+    <g className={`cord-track cord-track--${layer}`} filter="url(#soft-shadow)">
       {snapshots.slice(1).map((_, eventIndex) => {
-        if (events[eventIndex]?.splitterId === cordId) return null;
+        const isSplitter = events[eventIndex]?.splitterId === cordId;
+        if ((layer === 'splitter') !== isSplitter) return null;
         const start = pointFor(cordId, eventIndex);
         const end = pointFor(cordId, eventIndex + 1);
         const midY = (start.y + end.y) / 2;
         const d = `M ${start.x} ${start.y} Q ${start.x} ${midY} ${end.x} ${end.y}`;
-        const future = eventIndex > activeIndex;
         return (
-          <g key={`${cordId}-${eventIndex}`} className={future ? 'is-future' : ''}>
+          <g key={`${cordId}-${eventIndex}`}>
             <path className="cord-outline" d={d} />
             <path className="cord-fill" d={d} stroke={color} />
           </g>
         );
       })}
-      <circle className="cord-start" cx={pointFor(cordId, 0).x} cy={pointFor(cordId, 0).y} r="5" fill={color} />
+      {layer === 'surface' && <circle className="cord-start" cx={pointFor(cordId, 0).x} cy={pointFor(cordId, 0).y} r="5" fill={color} />}
     </g>
   );
 }
@@ -466,6 +448,22 @@ function buildColorMap(symbols: string[]): Map<string, string> {
     if (!map.has(symbol)) map.set(symbol, palette[map.size % palette.length]);
   });
   return map;
+}
+
+function describeLength(
+  mode: 'cycle' | 'manual',
+  repeats: number,
+  fullCycle: { repeats: number; rows: number } | undefined,
+  repeatSections: number,
+  hasOpenRepeat: boolean,
+  totalRows: number,
+): string {
+  if (repeatSections > 0 && !hasOpenRepeat) {
+    return `${repeatSections} fixed section${repeatSections === 1 ? '' : 's'} · ${totalRows} rows`;
+  }
+  if (mode === 'manual') return `${repeats} repeats`;
+  if (fullCycle) return `${fullCycle.repeats} repeats · ${fullCycle.rows} rows to close`;
+  return `${repeats} repeats · no closure found`;
 }
 
 function describeEvent(event: SplitEvent): string {

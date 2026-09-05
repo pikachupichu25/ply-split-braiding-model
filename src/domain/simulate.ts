@@ -70,15 +70,26 @@ export function simulatePattern(pattern: PatternAst, previewRepeats: number): Si
 }
 
 function expandRows(pattern: PatternAst, previewRepeats: number): RowInstruction[] {
-  if (!pattern.repeat) return pattern.rows;
-  const start = pattern.rows.findIndex((row) => row.number === pattern.repeat?.fromRow);
-  const end = pattern.rows.findIndex((row) => row.number === pattern.repeat?.throughRow);
-  if (start < 0 || end < start) return pattern.rows;
-  const before = pattern.rows.slice(0, start);
-  const unit = pattern.rows.slice(start, end + 1);
-  const after = pattern.rows.slice(end + 1);
-  const count = pattern.repeat.count ?? previewRepeats;
-  return [...before, ...Array.from({ length: count }, () => unit).flat(), ...after];
+  if (!pattern.repeats.length) return pattern.rows;
+
+  const ranges = pattern.repeats.map((repeat) => ({
+    repeat,
+    start: pattern.rows.findIndex((row) => row.number === repeat.fromRow),
+    end: pattern.rows.findIndex((row) => row.number === repeat.throughRow),
+  })).filter((range) => range.start >= 0 && range.end >= range.start)
+    .sort((a, b) => a.start - b.start);
+
+  const expanded: RowInstruction[] = [];
+  let cursor = 0;
+  ranges.forEach(({ repeat, start, end }) => {
+    expanded.push(...pattern.rows.slice(cursor, start));
+    const unit = pattern.rows.slice(start, end + 1);
+    const count = repeat.count ?? previewRepeats;
+    for (let iteration = 0; iteration < count; iteration += 1) expanded.push(...unit);
+    cursor = end + 1;
+  });
+  expanded.push(...pattern.rows.slice(cursor));
+  return expanded;
 }
 
 function error(line: number, message: string): Diagnostic {

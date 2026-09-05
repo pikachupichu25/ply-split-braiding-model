@@ -8,7 +8,7 @@ export function parsePattern(source: string): ParseResult {
   const diagnostics: Diagnostic[] = [];
   const rows: RowInstruction[] = [];
   let colors: string[] | undefined;
-  let repeat: Repeat | undefined;
+  const repeats: Repeat[] = [];
 
   source.split(/\r?\n/).forEach((rawLine, index) => {
     const line = rawLine.replace(/#.*/, '').trim();
@@ -38,15 +38,11 @@ export function parsePattern(source: string): ParseResult {
 
     const repeatMatch = line.match(repeatExpression);
     if (repeatMatch) {
-      if (repeat) {
-        diagnostics.push(error(lineNumber, 1, 'Only one repeat instruction is allowed.'));
-      } else {
-        repeat = {
-          fromRow: Number(repeatMatch[1]),
-          throughRow: Number(repeatMatch[2]),
-          ...(repeatMatch[3] ? { count: Number(repeatMatch[3]) } : {}),
-        };
-      }
+      repeats.push({
+        fromRow: Number(repeatMatch[1]),
+        throughRow: Number(repeatMatch[2]),
+        ...(repeatMatch[3] ? { count: Number(repeatMatch[3]) } : {}),
+      });
       return;
     }
 
@@ -69,15 +65,39 @@ export function parsePattern(source: string): ParseResult {
     numbers.add(row.number);
   });
 
-  if (repeat && (!numbers.has(repeat.fromRow) || !numbers.has(repeat.throughRow))) {
-    diagnostics.push(error(1, 1, 'The repeat range must refer to existing rows.'));
-  }
+  const rowIndexes = new Map(rows.map((row, index) => [row.number, index]));
+  const repeatRanges = repeats.map((repeat) => ({
+    repeat,
+    start: rowIndexes.get(repeat.fromRow),
+    end: rowIndexes.get(repeat.throughRow),
+  }));
+  repeatRanges.forEach(({ repeat, start, end }) => {
+    if (start === undefined || end === undefined) {
+      diagnostics.push(error(1, 1, `Repeat ${repeat.fromRow}-${repeat.throughRow} must refer to existing rows.`));
+    } else if (end < start) {
+      diagnostics.push(error(1, 1, `Repeat ${repeat.fromRow}-${repeat.throughRow} must run forwards through the written rows.`));
+    }
+    if (repeat.count !== undefined && repeat.count < 1) {
+      diagnostics.push(error(1, 1, `Repeat ${repeat.fromRow}-${repeat.throughRow} needs a positive count.`));
+    }
+  });
+
+  const validRanges = repeatRanges
+    .filter((range): range is typeof range & { start: number; end: number } => (
+      range.start !== undefined && range.end !== undefined && range.start <= range.end
+    ))
+    .sort((a, b) => a.start - b.start);
+  validRanges.slice(1).forEach((range, index) => {
+    if (range.start <= validRanges[index].end) {
+      diagnostics.push(error(1, 1, 'Repeat ranges cannot overlap.'));
+    }
+  });
 
   if (!colors || diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
     return { diagnostics };
   }
 
-  const pattern: PatternAst = { colors, rows, ...(repeat ? { repeat } : {}) };
+  const pattern: PatternAst = { colors, rows, repeats };
   return { pattern, diagnostics };
 }
 

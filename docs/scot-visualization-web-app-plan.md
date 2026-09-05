@@ -6,6 +6,8 @@
 
 This plan builds on the [SCOT Pattern Text Format Specification](./scot-pattern-format-spec.md). The first implementation should be a **structural simulator with an SVG view**, not a colour-grid painting tool. In SCOT, the ordered splitting operations determine the cord paths; the visible image is a result of those paths.
 
+For the implemented Finished UI, use the [Finished Visualization Specification](./finished-visualization-spec.md). Its [split-event transition definition](./finished-visualization-spec.md#22-split-event-transition) and [interlocking surface rules](./finished-visualization-spec.md#75-interlocking-transition-surface) govern Finished v1 and Finished (dev); the construction-diagram proposals below do not replace those rules.
+
 ## 1. Version 1 outcome
 
 Given:
