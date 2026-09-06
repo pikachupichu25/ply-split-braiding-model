@@ -2,6 +2,7 @@ import { chevronPattern } from './chevron';
 import { colorBlock8Pattern } from './colorBlock8';
 import { doubleChevron24Pattern } from './doubleChevron24';
 import { mirroredDiamonds24Pattern } from './mirroredDiamonds24';
+import { wayuuFajon20Pattern } from './wayuuFajon20';
 
 export type SamplePattern = {
   id: string;
@@ -34,6 +35,12 @@ export const samplePatterns: SamplePattern[] = [
     name: 'Twenty-four cord mirrored diamonds',
     summary: 'A mirrored A-F colour sequence worked in two four-row sections, each repeated six times (48 rows total).',
     source: mirroredDiamonds24Pattern,
+  },
+  {
+    id: 'wayuu-fajon-20',
+    name: 'Como hacer tira,gasa,fajon wayuu from Youtube',
+    summary: 'Twenty cords in a Wayuu-inspired A-C sequence, worked as a four-row repeat four times (16 rows total).',
+    source: wayuuFajon20Pattern,
   },
 ];
 

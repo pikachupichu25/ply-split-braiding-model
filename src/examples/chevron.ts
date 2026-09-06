@@ -1,5 +1,6 @@
 export const chevronPattern = `# Eight-cord SCOT chevron
 color: CBAAAABC
+palette: A=#d3a448, B=#77b6c9, C=#d76b52
 
 1 1>2,3,4
 2 8>7,6,5,4

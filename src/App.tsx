@@ -45,7 +45,10 @@ export default function App() {
     setSource(sample.source);
   };
 
-  const colorMap = useMemo(() => buildColorMap(parsed.pattern?.colors ?? []), [parsed.pattern?.colors]);
+  const colorMap = useMemo(
+    () => buildColorMap(parsed.pattern?.colors ?? [], parsed.pattern?.colorAssignments ?? {}),
+    [parsed.pattern?.colors, parsed.pattern?.colorAssignments],
+  );
   const status = diagnostics.some((diagnostic) => diagnostic.severity === 'error')
     ? 'Needs attention'
     : allEvents.length > 0
@@ -96,7 +99,7 @@ export default function App() {
             spellCheck={false}
             aria-describedby="notation-help"
           />
-          <p id="notation-help" className="editor-help">Use fixed front-oriented lane numbers. A turn reverses the visible lane labels, while each cord retains its own hidden identity.</p>
+          <p id="notation-help" className="editor-help">Use fixed front-oriented lane numbers. Optionally define colours with <code>palette: A=#d76b52, B=lightblue</code>; any omitted symbol keeps its current default colour. A turn reverses the visible lane labels, while each cord retains its own hidden identity.</p>
 
           <section className="palette-panel" aria-labelledby="palette-title">
             <div className="section-kicker"><span>Colour key</span><span>{parsed.pattern?.colors.length ?? 0} cords</span></div>
@@ -442,10 +445,10 @@ function CordTrack({ cordId, snapshots, events, colors, pointFor, layer }: {
   );
 }
 
-function buildColorMap(symbols: string[]): Map<string, string> {
+function buildColorMap(symbols: string[], assignments: Record<string, string>): Map<string, string> {
   const map = new Map<string, string>();
   symbols.forEach((symbol) => {
-    if (!map.has(symbol)) map.set(symbol, palette[map.size % palette.length]);
+    if (!map.has(symbol)) map.set(symbol, assignments[symbol] ?? palette[map.size % palette.length]);
   });
   return map;
 }

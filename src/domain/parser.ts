@@ -3,15 +3,21 @@ import type { Diagnostic, ParseResult, PatternAst, Repeat, RowInstruction } from
 const rowExpression = /^(\d+)\s+(\d+)\s*>\s*(\d+(?:\s*,\s*\d+)*)\s*$/;
 const repeatExpression = /^\[\s*repeat\s+(\d+)\s*-\s*(\d+)(?:\s+x\s+(\d+))?\s*\]$/i;
 const colorExpression = /^color\s*:\s*([A-Za-z]+)\s*$/i;
+const paletteExpression = /^palette\s*:\s*(.*?)\s*$/i;
+const paletteEntryExpression = /^([A-Za-z])\s*=\s*(#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})|[a-z]+)$/i;
 
 export function parsePattern(source: string): ParseResult {
   const diagnostics: Diagnostic[] = [];
   const rows: RowInstruction[] = [];
   let colors: string[] | undefined;
+  let colorAssignments: Record<string, string> | undefined;
   const repeats: Repeat[] = [];
 
   source.split(/\r?\n/).forEach((rawLine, index) => {
-    const line = rawLine.replace(/#.*/, '').trim();
+    if (rawLine.trimStart().startsWith('#')) return;
+    const line = rawLine
+      .replace(/\s+#(?!(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})(?:\s|,|$)).*$/i, '')
+      .trim();
     const lineNumber = index + 1;
     if (!line) return;
 
@@ -22,6 +28,35 @@ export function parsePattern(source: string): ParseResult {
       } else {
         colors = colorMatch[1].toUpperCase().split('');
       }
+      return;
+    }
+
+    const paletteMatch = line.match(paletteExpression);
+    if (paletteMatch) {
+      if (colorAssignments) {
+        diagnostics.push(error(lineNumber, 1, 'Only one palette: line is allowed.'));
+        return;
+      }
+
+      colorAssignments = {};
+      const entries = paletteMatch[1].split(',').map((entry) => entry.trim()).filter(Boolean);
+      if (!entries.length) {
+        diagnostics.push(error(lineNumber, 1, 'Add at least one assignment, such as A=#d76b52.'));
+        return;
+      }
+      entries.forEach((entry) => {
+        const match = entry.match(paletteEntryExpression);
+        if (!match) {
+          diagnostics.push(error(lineNumber, 1, `Invalid palette assignment "${entry}". Use A=#d76b52 or A=brown.`));
+          return;
+        }
+        const symbol = match[1].toUpperCase();
+        if (colorAssignments![symbol]) {
+          diagnostics.push(error(lineNumber, 1, `Palette colour for ${symbol} is specified more than once.`));
+          return;
+        }
+        colorAssignments![symbol] = match[2].toLowerCase();
+      });
       return;
     }
 
@@ -46,7 +81,7 @@ export function parsePattern(source: string): ParseResult {
       return;
     }
 
-    diagnostics.push(error(lineNumber, 1, 'Expected color:, a row such as 1 1>2,3,4, or [repeat 1-2].'));
+    diagnostics.push(error(lineNumber, 1, 'Expected color:, optional palette:, a row such as 1 1>2,3,4, or [repeat 1-2].'));
   });
 
   if (!colors) {
@@ -97,7 +132,7 @@ export function parsePattern(source: string): ParseResult {
     return { diagnostics };
   }
 
-  const pattern: PatternAst = { colors, rows, repeats };
+  const pattern: PatternAst = { colors, colorAssignments: colorAssignments ?? {}, rows, repeats };
   return { pattern, diagnostics };
 }
 

@@ -7,12 +7,113 @@ import { simulatePattern } from '../src/domain/simulate.ts';
 import { chevronPattern } from '../src/examples/chevron.ts';
 import { doubleChevron24Pattern } from '../src/examples/doubleChevron24.ts';
 import { mirroredDiamonds24Pattern } from '../src/examples/mirroredDiamonds24.ts';
+import { wayuuFajon20Pattern } from '../src/examples/wayuuFajon20.ts';
 
 function simulate(source: string) {
   const parsed = parsePattern(source);
   assert.ok(parsed.pattern);
   return simulatePattern(parsed.pattern, 4);
 }
+
+function assertVisibleContinuity(cells: ReturnType<typeof buildFinishedLayout>['cells']) {
+  const lastParticipation = new Map<string, typeof cells[number]>();
+  for (const cell of cells) {
+    const previous = lastParticipation.get(cell.event.splitteeId);
+    if (previous?.event.splitteeId === cell.event.splitteeId) {
+      const adjacent = Math.abs(previous.column - cell.column) === 1;
+      if (adjacent) {
+        const boundary = cell.points.find(p => previous.points.some(q => Math.abs(p.x - q.x) < 0.001))!.x;
+        const previousEdge = previous.points.filter(p => Math.abs(p.x - boundary) < 0.001).map(p => p.y);
+        const currentEdge = cell.points.filter(p => Math.abs(p.x - boundary) < 0.001).map(p => p.y);
+        assert.equal(previousEdge.length, 2);
+        assert.equal(currentEdge.length, 2);
+        assert.ok(Math.abs(Math.min(...previousEdge) - Math.min(...currentEdge)) < 0.000001
+          && Math.abs(Math.max(...previousEdge) - Math.max(...currentEdge)) < 0.000001,
+        `${cell.event.splitteeId} edges are misaligned between events ${previous.event.eventIndex} and ${cell.event.eventIndex}`);
+      }
+    }
+    lastParticipation.set(cell.event.splitteeId, cell);
+    lastParticipation.set(cell.event.splitterId, cell);
+  }
+}
+
+function assertColumnPacking(cells: ReturnType<typeof buildFinishedLayout>['cells']) {
+  for (const [index, cell] of cells.entries()) {
+    for (const above of cells.slice(0, index)) {
+      if (above.column !== cell.column) continue;
+      for (const x of new Set(cell.points.map(p => p.x))) {
+        const upperBottom = Math.max(...above.points.filter(p => Math.abs(p.x - x) < 0.001).map(p => p.y));
+        const lowerTop = Math.min(...cell.points.filter(p => Math.abs(p.x - x) < 0.001).map(p => p.y));
+        assert.ok(Number.isFinite(upperBottom) && Number.isFinite(lowerTop));
+        assert.ok(lowerTop >= upperBottom - 0.000001,
+          `column ${cell.column}: events ${above.event.eventIndex} and ${cell.event.eventIndex} overlap`);
+      }
+    }
+  }
+}
+
+test('Wayuu columns 5–9 stack after both turns without breaking adjacent splittee joins', () => {
+  const simulation = simulate(wayuuFajon20Pattern);
+  const layout = buildFinishedLayout(simulation);
+  const affected = layout.cells.filter(cell => cell.column >= 5 && cell.column <= 9);
+  assert.ok(affected.some(cell => cell.event.sourceRow >= 7));
+  assert.ok(affected.some(cell => cell.event.sourceRow >= 12), 'include the sample’s second turn');
+  assertColumnPacking(affected);
+  assertColumnPacking(layout.cells);
+  assertVisibleContinuity(layout.cells);
+  assert.equal(layout.cells.length, simulation.events.length);
+});
+
+test('Wayuu splittees align their full edges across short steps and the returning section', () => {
+  for (const source of [wayuuFajon20Pattern,
+    wayuuFajon20Pattern.replace('AABCBBCBAAAABCBBCBAA', 'A'.repeat(20))]) {
+    const simulation = simulate(source);
+    const before = JSON.stringify(simulation);
+    const layout = buildFinishedLayout(simulation);
+    assertVisibleContinuity(layout.cells);
+    // The same-gap return stacks; the adjacent-gap continuation aligns.
+    assertColumnPacking([layout.cells[65], layout.cells[82]]);
+    assertVisibleContinuity([layout.cells[77], layout.cells[85]]);
+    assert.equal(layout.cells[65].event.splitteeId, 'C03');
+    assert.equal(layout.cells[82].event.splitteeId, 'C03');
+    assert.equal(layout.cells[77].event.splitteeId, 'C20');
+    assert.equal(layout.cells[85].event.splitteeId, 'C20');
+    assert.equal(JSON.stringify(simulation), before);
+    assert.deepEqual(buildFinishedLayout(simulation), layout);
+    assert.equal(layout.cells.length, simulation.events.length);
+  }
+});
+
+test('mirrored diamonds connect C18/C01 to C07/C01 across the change in braiding steps', () => {
+  for (const source of [mirroredDiamonds24Pattern,
+    mirroredDiamonds24Pattern.replace('ABCDEFFEDCBAABCDEFFEDCBA', 'A'.repeat(24))]) {
+    const simulation = simulate(source);
+    const layout = buildFinishedLayout(simulation);
+    assertVisibleContinuity(layout.cells);
+    const before = layout.cells.find(c => c.event.splitterId === 'C18' && c.event.splitteeId === 'C01')!;
+    const after = layout.cells.find(c => c.event.splitterId === 'C07' && c.event.splitteeId === 'C01')!;
+    assert.ok(before && after);
+    assert.equal(after.column, before.column + 1);
+    const previousBottom = Math.max(before.points[0].y, before.points[3].y);
+    const nextTop = Math.min(...after.points.filter(p => p.x === before.points[0].x).map(p => p.y));
+    assert.ok(previousBottom - nextTop > 1, 'the cord joins across a visible edge, not just a point');
+    assert.equal(layout.cells.length, simulation.events.length);
+
+    const reflected = simulate(source);
+    reflected.events = reflected.events.map(event => ({
+      ...event, fromLane: 25 - event.fromLane, toLane: 25 - event.toLane,
+    }));
+    const back = buildFinishedLayout(reflected);
+    assertVisibleContinuity(back.cells);
+    for (const [index, cell] of layout.cells.entries()) {
+      const points = back.cells[index].points;
+      for (const p of cell.points) {
+        assert.ok(points.some(q => Math.abs(q.x - (layout.width - p.x)) < 0.001
+          && Math.abs(q.y - p.y) < 0.001), 'layout must mirror without cord- or column-specific rules');
+      }
+    }
+  }
+});
 
 test('both directions meet their own last host, even with identical colours', () => {
   const simulation = simulate(chevronPattern.replace('CBAAAABC', 'AAAAAAAA'));
@@ -163,11 +264,14 @@ test('offset joins and departures mirror geometrically without column-specific r
 });
 
 test('all samples and control limits retain finite geometry and one surface per event', () => {
-  for (const source of [chevronPattern, doubleChevron24Pattern, mirroredDiamonds24Pattern]) {
+  for (const source of [chevronPattern, doubleChevron24Pattern, mirroredDiamonds24Pattern, wayuuFajon20Pattern]) {
     const simulation = simulate(source);
     for (const theta of [10, 30, 60]) {
       for (const tipAngle of [10, 30, 90]) {
-        const surfaces = buildFinishedSurfaces(buildFinishedLayout(simulation, { theta, tipAngle }).cells);
+        const layout = buildFinishedLayout(simulation, { theta, tipAngle });
+        const surfaces = buildFinishedSurfaces(layout.cells);
+        assertVisibleContinuity(layout.cells);
+        assertColumnPacking(layout.cells);
         assert.equal(surfaces.length, simulation.events.length);
         for (const surface of surfaces) {
           assert.doesNotMatch(JSON.stringify(surface), /NaN|Infinity|null/);

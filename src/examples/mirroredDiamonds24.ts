@@ -1,5 +1,6 @@
 export const mirroredDiamonds24Pattern = `# Twenty-four cord mirrored diamonds
 color: ABCDEFFEDCBAABCDEFFEDCBA
+palette: A=#d76b52, B=#77b6c9, C=#d3a448, D=#6f8f65, E=#a47aa3, F=#dd8f45
 
 1 24>23,22,21,20,19
 2 12>13,14,15,16,17,18,19

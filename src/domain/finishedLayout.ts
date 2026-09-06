@@ -64,10 +64,11 @@ export function buildFinishedLayout(
     lastVisibleByCord.delete(splitterId);
 
     const initialY = Math.max(cordY.get(splitterId) ?? 0, previousActionStart);
+    const stepDirection = actionStepDirection(action, lastVisibleByCord, widthDrop);
     const candidates = action.map((event, index) => {
       const start: FinishedPoint = {
         x: (event.fromLane - 1) * columnWidth,
-        y: initialY + index * widthDrop,
+        y: initialY + stepDirection * index * widthDrop,
       };
       const end: FinishedPoint = {
         x: (event.toLane - 1) * columnWidth,
@@ -88,14 +89,13 @@ export function buildFinishedLayout(
       );
     });
 
-    const connection = connectionTranslation(candidates, lastVisibleByCord, columnWidth);
-    const connected = candidates.map((cell) =>
-      translateCell(cell, connection.x, connection.y),
-    );
-    const shift = minimumDownwardShift(connected, placed, columnWidth);
-    const shifted = connected.map((cell) => translateCell(cell, 0, shift));
+    const aligned = alignContinuingSplittees(candidates, lastVisibleByCord);
+    // Establish exact ribbon connections first. The final packing pass moves
+    // whole ribbons together to resolve collisions without breaking a join.
+    const shift = aligned ? 0 : minimumDownwardShift(candidates, placed, columnWidth, lastVisibleByCord);
+    const shifted = aligned ?? candidates.map((cell) => translateCell(cell, 0, shift));
     placed.push(...shifted);
-    previousActionStart = initialY + connection.y + shift;
+    previousActionStart = shifted[0].points[0].y;
 
     shifted.forEach((cell) => {
       const end = crossGapEnd(cell);
@@ -119,12 +119,13 @@ export function buildFinishedLayout(
     };
   }
 
-  const allPoints = placed.flatMap((cell) => cell.points);
+  const packed = packConnectedRibbons(placed);
+  const allPoints = packed.flatMap((cell) => cell.points);
   const minX = Math.min(...allPoints.map((point) => point.x));
   const maxX = Math.max(...allPoints.map((point) => point.x));
   const minY = Math.min(...allPoints.map((point) => point.y));
   const maxY = Math.max(...allPoints.map((point) => point.y));
-  const normalized = placed.map((cell) =>
+  const normalized = packed.map((cell) =>
     translateCell(cell, padding - minX, padding - minY),
   );
 
@@ -136,6 +137,70 @@ export function buildFinishedLayout(
     cellSide,
     packedTipAngle,
     cells: normalized,
+  };
+}
+
+function packConnectedRibbons(cells: FinishedCell[]): FinishedCell[] {
+  type Ribbon = { shift: number; incoming: number; next: { ribbon: number; distance: number }[] };
+  const ribbons: Ribbon[] = [];
+  const ribbonForCell = new Map<FinishedCell, number>();
+  const lastParticipation = new Map<string, FinishedCell>();
+  const lastInColumn = new Map<number, FinishedCell>();
+
+  for (const cell of cells) {
+    const previous = lastParticipation.get(cell.event.splitteeId);
+    // Only adjacent-gap continuations share a full edge. A return through the
+    // same gap starts a new run: matching that same-side edge would overlay
+    // the two footprints, so the returning cell must stack below it instead.
+    const continues = previous?.event.splitteeId === cell.event.splitteeId
+      && Math.abs(previous.column - cell.column) === 1;
+    const ribbon = continues ? ribbonForCell.get(previous)! : ribbons.length;
+    if (!continues) ribbons.push({ shift: 0, incoming: 0, next: [] });
+    ribbonForCell.set(cell, ribbon);
+
+    const above = lastInColumn.get(cell.column);
+    if (above) {
+      const predecessor = ribbonForCell.get(above)!;
+      // Both diagonal edges are linear. Separating their vertical intervals
+      // at both column boundaries prevents interior overlap throughout it.
+      const left = Math.min(...cell.points.map(p => p.x));
+      const right = Math.max(...cell.points.map(p => p.x));
+      const distance = Math.max(
+        verticalRange(above, left).bottom - verticalRange(cell, left).top,
+        verticalRange(above, right).bottom - verticalRange(cell, right).top,
+      );
+      ribbons[predecessor].next.push({ ribbon, distance });
+      ribbons[ribbon].incoming += 1;
+    }
+    lastInColumn.set(cell.column, cell);
+    lastParticipation.set(cell.event.splitteeId, cell);
+    lastParticipation.set(cell.event.splitterId, cell);
+  }
+
+  // Column order supplies a dependency graph between runs. Its longest paths
+  // give the smallest downward translations satisfying every column at once.
+  const ready = ribbons.flatMap((ribbon, index) => ribbon.incoming === 0 ? [index] : []);
+  for (let cursor = 0; cursor < ready.length; cursor += 1) {
+    const current = ribbons[ready[cursor]];
+    for (const edge of current.next) {
+      const next = ribbons[edge.ribbon];
+      next.shift = Math.max(next.shift, current.shift + edge.distance);
+      next.incoming -= 1;
+      if (next.incoming === 0) ready.push(edge.ribbon);
+    }
+  }
+  return cells.map(cell => translateCell(cell, 0, ribbons[ribbonForCell.get(cell)!].shift));
+}
+
+function verticalRange(cell: FinishedCell, x: number): { top: number; bottom: number } {
+  const left = Math.min(...cell.points.map(p => p.x));
+  const right = Math.max(...cell.points.map(p => p.x));
+  const leftEdge = cell.points.filter(p => p.x === left).map(p => p.y);
+  const rightEdge = cell.points.filter(p => p.x === right).map(p => p.y);
+  const ratio = (x - left) / (right - left);
+  return {
+    top: Math.min(...leftEdge) + ratio * (Math.min(...rightEdge) - Math.min(...leftEdge)),
+    bottom: Math.max(...leftEdge) + ratio * (Math.max(...rightEdge) - Math.max(...leftEdge)),
   };
 }
 
@@ -203,39 +268,64 @@ function downwardLongAxis(cell: FinishedCell): FinishedPoint {
   return axis.y >= 0 ? axis : { x: -axis.x, y: -axis.y };
 }
 
-function connectionTranslation(
+function alignContinuingSplittees(
   candidates: FinishedCell[],
   lastVisibleByCord: Map<string, FinishedCell>,
-  columnWidth: number,
-): FinishedPoint {
-  const translations = candidates.flatMap((candidate) => {
-    const previous = lastVisibleByCord.get(candidate.event.splitteeId);
-    if (!previous) return [];
-    if (Math.abs(previous.column - candidate.column) !== 1) return [];
-    const boundary = Math.min(previous.column, candidate.column) * columnWidth;
-    return [{ x: 0, y: boundaryTop(previous, boundary) - boundaryTop(candidate, boundary) }];
+): FinishedCell[] | undefined {
+  const anchors = candidates.flatMap((cell, index) => {
+    const previous = lastVisibleByCord.get(cell.event.splitteeId);
+    if (!previous || previous.event.fromLane !== cell.event.toLane) return [];
+    // The splittee leaves the old cell at the splitter's starting lane and
+    // enters the new cell at the splitter's destination lane.
+    const outgoingTop = previous.points[0];
+    const incomingTop = cell.points[cell.event.toLane > cell.event.fromLane ? 3 : 1];
+    return [{ index, x: outgoingTop.x - incomingTop.x, y: outgoingTop.y - incomingTop.y }];
   });
-  if (!translations.length) return { x: 0, y: 0 };
-  return {
-    x: translations.reduce((total, translation) => total + translation.x, 0) / translations.length,
-    y: translations.reduce((total, translation) => total + translation.y, 0) / translations.length,
-  };
+  if (!anchors.length) return undefined;
+
+  // Each anchor keeps its own exact offset. Interpolate only the new or
+  // returning cells between anchors, extending the nearest offset at an end.
+  return candidates.map((cell, index) => {
+    const next = anchors.findIndex(anchor => anchor.index >= index);
+    const right = anchors[next === -1 ? anchors.length - 1 : next];
+    const left = anchors[Math.max(0, (next === -1 ? anchors.length : next) - 1)];
+    const ratio = right.index === left.index ? 0 : (index - left.index) / (right.index - left.index);
+    return translateCell(cell,
+      left.x + ratio * (right.x - left.x),
+      left.y + ratio * (right.y - left.y));
+  });
 }
 
-function boundaryTop(cell: FinishedCell, x: number): number {
-  return Math.min(
-    ...cell.points
-      .filter((point) => Math.abs(point.x - x) < 0.5)
-      .map((point) => point.y),
-  );
+function actionStepDirection(
+  action: SplitEvent[],
+  lastVisibleByCord: Map<string, FinishedCell>,
+  widthDrop: number,
+): number {
+  // A new section can work back up the existing cord ends. Choose the course
+  // direction that best fits those ends, rather than always descending along
+  // the action. With insufficient evidence (or a tie), keep the usual order.
+  const error = (direction: number) => {
+    const offsets = action.flatMap((event, index) => {
+      const previous = lastVisibleByCord.get(event.splitteeId);
+      if (!previous || previous.event.fromLane !== event.toLane) return [];
+      // The incoming-corner offset is identical for every cell, so it does
+      // not affect the variance used to choose the provisional row direction.
+      return [previous.points[0].y - direction * index * widthDrop];
+    });
+    if (offsets.length < 2) return Infinity;
+    const mean = offsets.reduce((sum, y) => sum + y, 0) / offsets.length;
+    return offsets.reduce((sum, y) => sum + (y - mean) ** 2, 0);
+  };
+  return error(-1) + 0.001 < error(1) ? -1 : 1;
 }
 
 function minimumDownwardShift(
   candidates: FinishedCell[],
   placed: FinishedCell[],
   columnWidth: number,
+  lastVisibleByCord: Map<string, FinishedCell>,
 ): number {
-  if (!placed.length || !intersectsPlaced(candidates, placed)) return 0;
+  if (!placed.length || !intersectsPlaced(candidates, placed, lastVisibleByCord)) return 0;
 
   const step = Math.max(0.5, columnWidth / 100);
   const placedBottom = Math.max(...placed.flatMap((cell) => cell.points.map((point) => point.y)));
@@ -244,7 +334,7 @@ function minimumDownwardShift(
 
   for (let shift = step; shift <= maximumShift; shift += step) {
     const shifted = candidates.map((cell) => translateCell(cell, 0, shift));
-    if (!intersectsPlaced(shifted, placed)) {
+    if (!intersectsPlaced(shifted, placed, lastVisibleByCord)) {
       let lower = shift - step;
       let upper = shift;
       for (let iteration = 0; iteration < 20; iteration += 1) {
@@ -252,7 +342,7 @@ function minimumDownwardShift(
         const middleCandidates = candidates.map((cell) =>
           translateCell(cell, 0, middle),
         );
-        if (intersectsPlaced(middleCandidates, placed)) lower = middle;
+        if (intersectsPlaced(middleCandidates, placed, lastVisibleByCord)) lower = middle;
         else upper = middle;
       }
       return upper;
@@ -262,10 +352,21 @@ function minimumDownwardShift(
   return maximumShift;
 }
 
-function intersectsPlaced(candidates: FinishedCell[], placed: FinishedCell[]): boolean {
+function intersectsPlaced(
+  candidates: FinishedCell[],
+  placed: FinishedCell[],
+  lastVisibleByCord: Map<string, FinishedCell>,
+): boolean {
   return candidates.some((candidate) =>
     !candidate.allowsOverlap
-    && placed.some((existing) => polygonsOverlap(candidate.points, existing.points)),
+    && placed.some((existing) => {
+      // Two footprints at a turn describe the same continuous cord. Only its
+      // immediately preceding visible cell may overlap at this return edge.
+      const turnsBack = existing === lastVisibleByCord.get(candidate.event.splitteeId)
+        && existing.column === candidate.column
+        && existing.event.fromLane === candidate.event.toLane;
+      return !turnsBack && polygonsOverlap(candidate.points, existing.points);
+    }),
   );
 }
 

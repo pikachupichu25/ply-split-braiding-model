@@ -22,6 +22,8 @@ export type Repeat = {
 
 export type PatternAst = {
   colors: string[];
+  /** Optional source-defined CSS colour names or hex values keyed by cord symbol. */
+  colorAssignments: Record<string, string>;
   rows: RowInstruction[];
   repeats: Repeat[];
 };
