@@ -21,6 +21,8 @@ export default function App() {
   const [finishedAngle, setFinishedAngle] = useState(30);
   const [finishedTip, setFinishedTip] = useState(30);
   const [previewWidth, setPreviewWidth] = useState(25);
+  const [pendingSplitter, setPendingSplitter] = useState<number | null>(null);
+  const [hoveredLane, setHoveredLane] = useState<number | null>(null);
 
   const parsed = useMemo(() => parsePattern(source), [source]);
   const fullCycle = useMemo(
@@ -56,6 +58,42 @@ export default function App() {
     : allEvents.length > 0
       ? 'Structurally sound'
       : 'Awaiting rows';
+
+  const nextRowNumber = useMemo(
+    () => (parsed.pattern?.rows.reduce((max, row) => Math.max(max, row.number), 0) ?? 0) + 1,
+    [parsed.pattern?.rows],
+  );
+  const previewSplitteeLanes = pendingSplitter !== null && hoveredLane !== null && hoveredLane !== pendingSplitter
+    ? laneRange(pendingSplitter, hoveredLane)
+    : [];
+
+  useEffect(() => {
+    setPendingSplitter(null);
+    setHoveredLane(null);
+  }, [source, view]);
+
+  useEffect(() => {
+    if (pendingSplitter === null) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPendingSplitter(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingSplitter]);
+
+  const handleLaneClick = (lane: number) => {
+    if (pendingSplitter === null) {
+      setPendingSplitter(lane);
+      return;
+    }
+    if (lane === pendingSplitter) {
+      setPendingSplitter(null);
+      return;
+    }
+    const splitteeLanes = laneRange(pendingSplitter, lane);
+    const newLine = `${nextRowNumber} ${pendingSplitter}>${splitteeLanes.join(',')}`;
+    setSource((current) => appendRowLine(current, newLine));
+  };
 
   return (
     <main className="app-shell">
@@ -163,6 +201,15 @@ export default function App() {
                 : `fixed lanes · ${mirrorFace} display`}</span>
             <span>{`${simulation.totalRows} courses · ${allEvents.length} splits`}</span>
           </div>
+          {view === 'braid' && (simulation.snapshots[0]?.lanes.length ?? 0) > 0 && (
+            <p className="braid-step-hint" aria-live="polite">
+              {pendingSplitter === null
+                ? 'Click a lane in the legend below to arm it as the splitter for a new step.'
+                : hoveredLane !== null && hoveredLane !== pendingSplitter
+                  ? `Row ${nextRowNumber}: ${pendingSplitter}>${previewSplitteeLanes.join(',')} — click lane ${hoveredLane} to add it, or press Esc to cancel.`
+                  : `Splitter armed at lane ${pendingSplitter}. Click the last splittee lane to add the step, or press Esc to cancel.`}
+            </p>
+          )}
           {view === 'finished-v1' ? (
             <FinishedV1Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
           ) : view === 'finished-v2' ? (
@@ -170,7 +217,15 @@ export default function App() {
           ) : view === 'finished-dev' ? (
             <FinishedBraidPreview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
           ) : (
-            <BraidDiagram simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} />
+            <BraidDiagram
+              simulation={simulation}
+              colors={colorMap}
+              mirrorFace={mirrorFace}
+              pendingSplitter={pendingSplitter}
+              hoveredLane={hoveredLane}
+              onLaneClick={handleLaneClick}
+              onLaneHover={setHoveredLane}
+            />
           )}
 
           {view === 'finished-v1' ? (
@@ -235,7 +290,14 @@ type DiagramProps = {
   mirrorFace: Face;
 };
 
-function BraidDiagram({ simulation, colors, mirrorFace }: DiagramProps) {
+type BraidDiagramProps = DiagramProps & {
+  pendingSplitter: number | null;
+  hoveredLane: number | null;
+  onLaneClick: (lane: number) => void;
+  onLaneHover: (lane: number | null) => void;
+};
+
+function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hoveredLane, onLaneClick, onLaneHover }: BraidDiagramProps) {
   const laneCount = simulation.snapshots[0]?.lanes.length ?? 8;
   const eventCount = simulation.events.length;
   const laneGap = 82;
@@ -254,6 +316,9 @@ function BraidDiagram({ simulation, colors, mirrorFace }: DiagramProps) {
     const laneIndex = simulation.snapshots[snapshotIndex]?.lanes.findIndex((cord) => cord.id === cordId) ?? 0;
     return { x: xAt(Math.max(0, laneIndex)), y: yAt(snapshotIndex) };
   };
+  const previewRange = pendingSplitter !== null && hoveredLane !== null && hoveredLane !== pendingSplitter
+    ? new Set(laneRange(pendingSplitter, hoveredLane))
+    : new Set<number>();
 
   return (
     <div className="diagram-frame diagram-frame--braid">
@@ -309,14 +374,34 @@ function BraidDiagram({ simulation, colors, mirrorFace }: DiagramProps) {
           <g className="lane-legend">
             <line className="lane-legend-rule" x1={xAt(0) - 26} y1={labelY - 18} x2={xAt(laneCount - 1) + 26} y2={labelY - 18} />
             {finalLanes.map((cord, laneIndex) => {
+              const lane = laneIndex + 1;
               const x = xAt(laneIndex);
               const color = colors.get(cord.colorSymbol) ?? '#d3a448';
+              const isArmed = pendingSplitter === lane;
+              const isPreview = !isArmed && previewRange.has(lane);
               return (
-                <g key={`lane-legend-${laneIndex}`} data-lane={laneIndex + 1} data-cord-id={cord.id}>
-                  <text className="lane-legend-position" x={x} y={labelY} textAnchor="middle">{laneIndex + 1}</text>
+                <g
+                  key={`lane-legend-${laneIndex}`}
+                  className={`lane-legend-item${isArmed ? ' is-armed' : ''}${isPreview ? ' is-preview' : ''}`}
+                  data-lane={lane}
+                  data-cord-id={cord.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onLaneClick(lane)}
+                  onMouseEnter={() => onLaneHover(lane)}
+                  onMouseLeave={() => onLaneHover(null)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onLaneClick(lane);
+                    }
+                  }}
+                >
+                  <rect className="lane-legend-hit" x={x - laneGap / 2 + 4} y={labelY - 16} width={laneGap - 8} height={34} rx={4} />
+                  <text className="lane-legend-position" x={x} y={labelY} textAnchor="middle">{lane}</text>
                   <circle className="lane-legend-swatch" cx={x - 18} cy={labelY + 12} r="4.5" fill={color} />
                   <text className="lane-legend-cord" x={x - 10} y={labelY + 16}>{cord.id}</text>
-                  <title>{`Position ${laneIndex + 1} · ${cord.id}`}</title>
+                  <title>{`Position ${lane} · ${cord.id}${isArmed ? ' · armed as splitter' : ''}`}</title>
                 </g>
               );
             })}
@@ -568,6 +653,30 @@ function CordTrack({ cordId, snapshots, events, colors, pointFor, layer }: {
       )}
     </g>
   );
+}
+
+/** Every lane from `from` to `to` inclusive of both ends, walked one step at a time. */
+function laneRange(from: number, to: number): number[] {
+  const direction = to > from ? 1 : -1;
+  const lanes: number[] = [];
+  for (let current = from + direction; current !== to + direction; current += direction) {
+    lanes.push(current);
+  }
+  return lanes;
+}
+
+function appendRowLine(source: string, line: string): string {
+  const lines = source.split(/\r?\n/);
+  let lastRowIndex = -1;
+  lines.forEach((rawLine, index) => {
+    if (/^\s*\d+\s+\d+\s*>/.test(rawLine)) lastRowIndex = index;
+  });
+  if (lastRowIndex === -1) {
+    const trimmed = source.replace(/\s+$/, '');
+    return trimmed ? `${trimmed}\n${line}` : line;
+  }
+  lines.splice(lastRowIndex + 1, 0, line);
+  return lines.join('\n');
 }
 
 function buildColorMap(symbols: string[], assignments: Record<string, string>): Map<string, string> {

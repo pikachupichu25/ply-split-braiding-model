@@ -86,6 +86,14 @@ textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.1
 .lane-legend-position { fill: #17293d; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
 .lane-legend-cord { fill: #786b5b; font-size: 10px; letter-spacing: .06em; }
 .lane-legend-swatch { stroke: #17293d; stroke-width: 1.4; }
+.lane-legend-item { cursor: pointer; }
+.lane-legend-hit { fill: transparent; stroke: transparent; stroke-width: 1.2; transition: fill .12s ease, stroke .12s ease; }
+.lane-legend-item:hover .lane-legend-hit { fill: rgba(215,107,82,.12); stroke: rgba(215,107,82,.35); }
+.lane-legend-item:focus-visible .lane-legend-hit { fill: rgba(215,107,82,.16); stroke: #d76b52; outline: none; }
+.lane-legend-item.is-armed .lane-legend-hit { fill: rgba(211,164,72,.26); stroke: #d3a448; stroke-width: 1.6; }
+.lane-legend-item.is-armed .lane-legend-position { fill: #a65342; }
+.lane-legend-item.is-preview .lane-legend-hit { fill: rgba(211,164,72,.14); stroke: rgba(211,164,72,.5); stroke-dasharray: 3 2; }
+.braid-step-hint { margin: 0 0 10px; padding: 8px 11px; border: 1px solid rgba(211,164,72,.4); border-radius: 2px; background: rgba(211,164,72,.14); color: #6b5636; font-size: 11px; line-height: 1.5; }
 
 .finished-preview { position: relative; display: grid; min-height: 420px; max-height: min(72vh, 860px); overflow: auto; place-items: start center; padding: 20px 12px; border: 1px solid rgba(23,41,61,.24); background: linear-gradient(135deg, rgba(23,41,61,.026) 25%, transparent 25%) 0 0/16px 16px, #f3e7cd; }
 .finished-preview svg { display: block; max-width: 100%; height: auto; overflow: visible; }

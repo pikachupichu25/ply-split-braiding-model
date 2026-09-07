@@ -3,6 +3,7 @@ import { chevronPattern } from './chevron';
 import { colorBlock8Pattern } from './colorBlock8';
 import { doubleChevron24Pattern } from './doubleChevron24';
 import { wayuuFajon20Pattern } from './wayuuFajon20';
+import { arrowPattern } from './arrow';
 
 export type SamplePattern = {
   id: string;
@@ -42,6 +43,12 @@ export const samplePatterns: SamplePattern[] = [
     summary: 'Twenty cords in a Wayuu-inspired A-C sequence, worked as a four-row repeat four times (16 rows total).',
     source: wayuuFajon20Pattern,
   },
+  {
+    id: 'arrow',
+    name: 'Arrow',
+    summary: 'Thirty-two cords with two colors.',
+    source: arrowPattern,
+  }
 ];
 
 export const defaultSample = samplePatterns[0];
