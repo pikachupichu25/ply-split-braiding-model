@@ -1,3 +1,4 @@
+import { braid16Pattern } from './braid16';
 import { chevronPattern } from './chevron';
 import { colorBlock8Pattern } from './colorBlock8';
 import { doubleChevron24Pattern } from './doubleChevron24';
@@ -35,6 +36,12 @@ export const samplePatterns: SamplePattern[] = [
     name: 'Twenty-four cord mirrored diamonds',
     summary: 'A mirrored A-F colour sequence worked in two four-row sections, each repeated six times (48 rows total).',
     source: mirroredDiamonds24Pattern,
+  },
+  {
+    id: 'braid-16',
+    name: 'Braid',
+    summary: 'Sixteen cords in an A-C sequence. Twelve rows: a right-leaning stack from lane 12, then a left-leaning stack, closed by a four-row staircase from lanes 4-1.',
+    source: braid16Pattern,
   },
   {
     id: 'wayuu-fajon-20',
