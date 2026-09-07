@@ -1,4 +1,5 @@
 export const arrowPattern = `# 32-cord arrow
+# source: https://youtu.be/QlPiwDE03Ws
 color: AAAABBBBBBBBAAAAAAAABBBBBBBBAAAA
 
 1 1>2,3,4,5,6,7,8

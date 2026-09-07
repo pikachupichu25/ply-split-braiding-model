@@ -1,4 +1,5 @@
 export const braid16Pattern = `# Sixteen-cord braid
+# source: https://youtu.be/iQJjaI4gKe4
 color: ABBAABBAACCAACCA
 palette: A=brown, B=lightblue, C=white
 

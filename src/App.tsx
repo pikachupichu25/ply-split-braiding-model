@@ -20,6 +20,7 @@ export default function App() {
   const [mirrorFace, setMirrorFace] = useState<Face>('front');
   const [finishedAngle, setFinishedAngle] = useState(30);
   const [finishedTip, setFinishedTip] = useState(30);
+  const [finishedSurfaceOn, setFinishedSurfaceOn] = useState(true);
   const [previewWidth, setPreviewWidth] = useState(25);
   const [pendingSplitter, setPendingSplitter] = useState<number | null>(null);
   const [hoveredLane, setHoveredLane] = useState<number | null>(null);
@@ -192,6 +193,12 @@ export default function App() {
                 <button className={mirrorFace === 'front' ? 'is-active' : ''} onClick={() => setMirrorFace('front')}>Front</button>
                 <button className={mirrorFace === 'back' ? 'is-active' : ''} onClick={() => setMirrorFace('back')}>Back</button>
               </div>
+              {(view === 'finished-v2' || view === 'finished-dev') && (
+                <div className="toggle-group" aria-label="Finished surface">
+                  <button className={finishedSurfaceOn ? 'is-active' : ''} onClick={() => setFinishedSurfaceOn(true)}>Surface</button>
+                  <button className={!finishedSurfaceOn ? 'is-active' : ''} onClick={() => setFinishedSurfaceOn(false)}>Flat</button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -219,9 +226,9 @@ export default function App() {
           {view === 'finished-v1' ? (
             <FinishedV1Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
           ) : view === 'finished-v2' ? (
-            <FinishedV2Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
+            <FinishedV2Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} surfaceOn={finishedSurfaceOn} />
           ) : view === 'finished-dev' ? (
-            <FinishedBraidPreview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
+            <FinishedBraidPreview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} surfaceOn={finishedSurfaceOn} />
           ) : (
             <BraidDiagram
               simulation={braidSimulation}
@@ -423,6 +430,7 @@ type FinishedProps = Pick<DiagramProps, 'simulation' | 'colors' | 'mirrorFace'> 
   theta?: number;
   tipAngle?: number;
   widthScale?: number;
+  surfaceOn?: boolean;
 };
 
 function FinishedV1Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1 }: FinishedProps) {
@@ -461,12 +469,15 @@ function FinishedV1Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
   );
 }
 
-function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1 }: FinishedProps) {
+function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1, surfaceOn = true }: FinishedProps) {
   const layout = useMemo(
     () => buildFinishedLayoutV2(simulation, { theta, tipAngle }),
     [simulation, theta, tipAngle],
   );
-  const surfaces = useMemo(() => buildFinishedSurfaces(layout.cells), [layout]);
+  const surfaces = useMemo(
+    () => buildFinishedSurfaces(layout.cells, { enabled: surfaceOn }),
+    [layout, surfaceOn],
+  );
   const startCords = new Map((simulation.snapshots[0]?.lanes ?? []).map((cord) => [cord.id, cord]));
   const colorFor = (cordId: string) => colors.get(startCords.get(cordId)?.colorSymbol ?? '') ?? '#d3a448';
   const faceTransform = mirrorFace === 'back' ? `translate(${layout.width} 0) scale(-1 1)` : undefined;
@@ -550,12 +561,15 @@ function summarizeRules(links: FinishedLink[]) {
   ];
 }
 
-function FinishedBraidPreview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1 }: FinishedProps) {
+function FinishedBraidPreview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1, surfaceOn = true }: FinishedProps) {
   const layout = useMemo(
     () => buildFinishedLayout(simulation, { theta, tipAngle }),
     [simulation, theta, tipAngle],
   );
-  const surfaces = useMemo(() => buildFinishedSurfaces(layout.cells), [layout]);
+  const surfaces = useMemo(
+    () => buildFinishedSurfaces(layout.cells, { enabled: surfaceOn }),
+    [layout, surfaceOn],
+  );
   const startCords = new Map(
     (simulation.snapshots[0]?.lanes ?? []).map((cord) => [cord.id, cord]),
   );

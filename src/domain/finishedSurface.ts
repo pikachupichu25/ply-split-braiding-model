@@ -22,13 +22,35 @@ export type FinishedSurface = {
 const point = ({ x, y }: FinishedPoint) => `${x},${y}`;
 const polygon = (points: FinishedPoint[]) => `M ${points.map(point).join(' L ')} Z`;
 const line = (start: FinishedPoint, end: FinishedPoint) => `M ${point(start)} L ${point(end)}`;
+const leansRight = (cell: FinishedCell) => cell.event.toLane > cell.event.fromLane;
+const surfaceTolerance = 0.000001;
+
+type FinishedSurfaceOptions = {
+  /** Off renders each cell as its own untouched parallelogram: no transition
+   * triangles, no overlap trim. On (the default) adds both. */
+  enabled?: boolean;
+};
 
 /** Add the local intersection triangle without changing any original cell. */
-export function buildFinishedSurfaces(cells: FinishedCell[]): FinishedSurface[] {
+export function buildFinishedSurfaces(
+  cells: FinishedCell[],
+  { enabled = true }: FinishedSurfaceOptions = {},
+): FinishedSurface[] {
+  if (!enabled) return cells.map((cell) => ({ cell, path: polygon(cell.points) }));
+
   const lastParticipation = new Map<string, FinishedCell>();
+  const lastInColumn = new Map<number, FinishedCell>();
 
   return cells.map((cell) => {
-    const surface: FinishedSurface = { cell, path: polygon(cell.points) };
+    const above = lastInColumn.get(cell.column);
+    // A leaning change is the one case column stacking allows to overlap
+    // (finishedLayout.ts's packConnectedRibbons leaves it unconstrained). The
+    // later cell keeps its placement but is drawn only below the earlier
+    // cell's own bottom edge, so nothing renders over already-finished cord.
+    const renderPoints = above && leansRight(above) !== leansRight(cell)
+      ? clipBelowEdge(cell.points, bottomEdge(above))
+      : cell.points;
+    const surface: FinishedSurface = { cell, path: polygon(renderPoints) };
     const previousSplitter = lastParticipation.get(cell.event.splitterId);
     const previousSplittee = lastParticipation.get(cell.event.splitteeId);
 
@@ -41,8 +63,54 @@ export function buildFinishedSurfaces(cells: FinishedCell[]): FinishedSurface[] 
 
     lastParticipation.set(cell.event.splitterId, cell);
     lastParticipation.set(cell.event.splitteeId, cell);
+    lastInColumn.set(cell.column, cell);
     return surface;
   });
+}
+
+/** The edge along the underside of the ribbon, in point order (left to right). */
+function bottomEdge(cell: FinishedCell): [FinishedPoint, FinishedPoint] {
+  return leansRight(cell)
+    ? [cell.points[1], cell.points[2]]
+    : [cell.points[2], cell.points[3]];
+}
+
+/**
+ * Sutherland-Hodgman clip of a convex polygon against the half-plane on or
+ * below a line through the two edge points (extended as y = f(x) by its own
+ * slope). Only the drawn silhouette changes; the cell's own points, used for
+ * packing and every other computation, are never touched.
+ */
+function clipBelowEdge(points: FinishedPoint[], edge: [FinishedPoint, FinishedPoint]): FinishedPoint[] {
+  const [edgeStart, edgeEnd] = edge;
+  const slope = (edgeEnd.y - edgeStart.y) / (edgeEnd.x - edgeStart.x);
+  const edgeY = (x: number) => edgeStart.y + slope * (x - edgeStart.x);
+  const isBelow = (p: FinishedPoint) => p.y >= edgeY(p.x) - surfaceTolerance;
+  const intersect = (a: FinishedPoint, b: FinishedPoint): FinishedPoint => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const denom = dy - slope * dx;
+    if (Math.abs(denom) < surfaceTolerance) return a;
+    const t = (edgeY(a.x) - a.y) / denom;
+    return { x: a.x + t * dx, y: a.y + t * dy };
+  };
+
+  const output: FinishedPoint[] = [];
+  const sameAsLast = (p: FinishedPoint) => {
+    const last = output.at(-1);
+    return last !== undefined && Math.abs(last.x - p.x) < surfaceTolerance
+      && Math.abs(last.y - p.y) < surfaceTolerance;
+  };
+  points.forEach((current, index) => {
+    const previous = points[(index + points.length - 1) % points.length];
+    const currentBelow = isBelow(current);
+    if (isBelow(previous) !== currentBelow) {
+      const crossing = intersect(previous, current);
+      if (!sameAsLast(crossing)) output.push(crossing);
+    }
+    if (currentBelow && !sameAsLast(current)) output.push(current);
+  });
+  return output.length >= 3 ? output : points;
 }
 
 function transitionTriangle(
