@@ -35,6 +35,10 @@ export default function App() {
     () => (parsed.pattern ? simulatePattern(parsed.pattern, repeats) : emptySimulation()),
     [parsed.pattern, repeats],
   );
+  const braidSimulation = useMemo(
+    () => (parsed.pattern ? simulatePattern(parsed.pattern, 1) : emptySimulation()),
+    [parsed.pattern],
+  );
   const diagnostics = [...parsed.diagnostics, ...simulation.diagnostics];
   const allEvents = simulation.events;
 
@@ -198,10 +202,12 @@ export default function App() {
                 ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v2 · R1+R2+R4`
               : view === 'finished-dev'
                 ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · development`
-                : `fixed lanes · ${mirrorFace} display`}</span>
-            <span>{`${simulation.totalRows} courses · ${allEvents.length} splits`}</span>
+                : `fixed lanes · ${mirrorFace} display · 1 repeat`}</span>
+            <span>{view === 'braid'
+              ? `${braidSimulation.totalRows} courses · ${braidSimulation.events.length} splits`
+              : `${simulation.totalRows} courses · ${allEvents.length} splits`}</span>
           </div>
-          {view === 'braid' && (simulation.snapshots[0]?.lanes.length ?? 0) > 0 && (
+          {view === 'braid' && (braidSimulation.snapshots[0]?.lanes.length ?? 0) > 0 && (
             <p className="braid-step-hint" aria-live="polite">
               {pendingSplitter === null
                 ? 'Click a lane in the legend below to arm it as the splitter for a new step.'
@@ -218,7 +224,7 @@ export default function App() {
             <FinishedBraidPreview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
           ) : (
             <BraidDiagram
-              simulation={simulation}
+              simulation={braidSimulation}
               colors={colorMap}
               mirrorFace={mirrorFace}
               pendingSplitter={pendingSplitter}
@@ -235,7 +241,7 @@ export default function App() {
           ) : view === 'finished-dev' ? (
             <p className="finished-caption">Development preview: transition edges extend to their intersection in the neighbouring column, filling the extra triangle with the continuing cord’s colour.</p>
           ) : (
-            <p className="finished-caption">Every split in the preview length is drawn at once. Each cord keeps its colour along its whole path, and each splitter stays visible behind its splittee at their crossing.</p>
+            <p className="finished-caption">The braid view always draws a single repeat, regardless of the preview length control below — switch to a Finished view to see the pattern build across multiple repeats. Each cord keeps its colour along its whole path, and each splitter stays visible behind its splittee at their crossing.</p>
           )}
         </section>
       </section>
