@@ -3,7 +3,7 @@
 > Status: implementation baseline  
 > Last updated: 2026-09-06
 
-The parallelograms below define the **layout footprints**. Section 7.5 adds a triangle where transition edges intersect in the neighbouring column. Every original cell path and layout footprint stays unchanged, as does the event count. Finished v1 keeps the original parallelograms; Finished (dev) applies this surface treatment.
+The parallelograms below define the **layout footprints**. Section 7.5 adds a triangle where transition edges intersect in the neighbouring column. Every original cell path and layout footprint stays unchanged, as does the event count. Finished v1 keeps the original parallelograms; Finished v2 and Finished (dev) apply this surface treatment.
 
 ## 1. Purpose
 
@@ -42,9 +42,9 @@ A **role transition** occurs when a physical cord's role in its current event di
 | Splittee | Splittee | Continue the visible ribbon where the layout connects it. |
 | Splitter | Splitter | Continue the hidden splitter trajectory. |
 | Splittee | Splitter | The cord leaves its visible run. Where its previous splittee cell and the current splittee cell occupy adjacent gaps, add an intersection triangle at their shared end. Remove the previous visible end as a continuity constraint; add no extra split cell. |
-| Splitter | Splittee | The cord returns to the visible surface. This event's splittee cell is the transition cell and may receive the interlocking treatment in section 7.5. |
+| Splitter | Splittee | The cord returns to the visible surface. If its next participation is in an adjacent column, place the returning splittee cell vertically adjacent to its last split cell and slightly lower, as specified in section 7.2.1. This transition cell may receive the interlocking treatment in section 7.5. |
 
-In the Finished UI, **split-event transition** includes both role changes: splitter-to-splittee and splittee-to-splitter. Detect each participant's change before recording either role for the current event. `FinishedCell.allowsOverlap` marks the provisional placement allowance for splitter-to-splittee only; final column packing removes base-cell overlaps regardless of this flag. It is not the general test for whether an event needs transition rendering.
+In the Finished UI, **split-event transition** includes both role changes: splitter-to-splittee and splittee-to-splitter. Detect each participant's change before recording either role for the current event. `FinishedCell.allowsOverlap` marks the provisional placement allowance for splitter-to-splittee only; final column packing must follow the direction-dependent rules in section 7.3. This flag is neither the general test for whether an event needs transition rendering nor the criterion for allowing partial overlap between opposite-leaning cells.
 
 Both participants in an event can change roles. The current event still has one splittee-coloured surface, and its two ends can receive transition triangles independently: the incoming end for a returning splittee, and the outgoing end where a previously visible splittee becomes the current splitter. A change of splitter between rows, a change of colour, a lane swap, a new repeat, or a Front/Back switch alone does not establish a transition. The current event need not be immediately after the returning cord's previous event, and its current splitter need not be the host through which that cord last passed.
 
@@ -248,8 +248,8 @@ For each split event, the renderer must:
 3. Create one rotated cell.
 4. Fill the cell with the event's splittee cord color.
 5. Associate that cell with the event's splittee cord.
-6. Place the cell in top-to-bottom construction order.
-7. In Finished (dev), add eligible transition triangles using the changing cord's previous participation. In Finished v1, retain the original parallelogram surface.
+6. Place the cell using cord continuity and the direction-dependent spacing rules in section 7.3; retain construction order for drawing.
+7. In Finished v2 and Finished (dev), add eligible transition triangles using the changing cord's previous participation. In Finished v1, retain the original parallelogram surface.
 
 The renderer must preserve enough event identity to inspect or test which `SplitEvent` produced each cell.
 
@@ -259,7 +259,7 @@ The finished craft grows from top to bottom on screen.
 
 Two different runs of cells are formed, and they must not be confused:
 
-- **A cord's run.** Successive splittee cells of the same stable cord share their complete common boundary edge. Both endpoints must align for adjacent-gap continuations, including across course changes. Partial overlap or point contact is insufficient for those joins. A return through the same gap starts a new run below the earlier cell; aligning their same-side edges would overlap their interiors. This is the run the finished surface makes visible.
+- **A cord's run.** Successive splittee cells of the same stable cord share their complete common boundary edge. Both endpoints must align for adjacent-gap continuations, including across course changes. Partial overlap or point contact is insufficient for an aligned join. A return through the same gap starts a new run whose spacing follows section 7.3; aligning their same-side edges would overlap their interiors. This is the run the finished surface makes visible.
 - **A splitter action's run.** Each event crosses one gap column. An ordinary action descends by `crossGapDrop` per event. Returning courses can ascend instead. These are provisional row arrangements: exact splittee connections take precedence over keeping the action on one rigid line. The cells retain their original parallelogram footprints and splittee colours.
 
 Each cell's crossing diagonal retains its original drop. In an ordinary descending action, consecutive events satisfy:
@@ -292,9 +292,9 @@ Ordinary splittee continuity is achieved by aligning the complete shared column-
 
 For every adjacent-gap continuing splittee, align the new cell's incoming top corner with the previous cell's outgoing top corner. Since all vertical sides have the same length, this aligns both edge endpoints. Use the actual corner coordinates, including experimental stagger offsets. The previous outgoing edge lies at its event's `fromLane`; the new incoming edge lies at its event's `toLane`.
 
-Each continuing splittee supplies its own exact translation. Never average translations across a row. Interpolate translations only for new or returning cells between these anchors, using the nearest anchor's translation beyond either end. A row can bend or change its spacing to satisfy all of its splittee connections. Acting as a splitter clears the previous visible endpoint, so an invisible splitter portion is never bridged.
+Each continuing splittee supplies its own exact translation. Never average translations across a row. Adjacent-column splitter-to-splittee returns also supply placement anchors under section 7.2.1. Interpolate translations only for cells without either kind of anchor, using the nearest anchor's translation beyond either end. A row can bend or change its spacing to satisfy its cord connections and emergence placements. Acting as a splitter clears the previous visible endpoint, so an invisible splitter portion is never bridged.
 
-Adjacent-gap connections and non-overlapping columns are both hard constraints. Final packing translates the entire connected run, including its earlier cells, by one common offset. This preserves every full-edge join while making room for the later cells. Same-gap reversals are separate runs and stack in event order; they do not impose a full-edge equality on two cells occupying the same side of a boundary.
+Full-edge cord continuity and same-direction contact are both required. Final packing translates each connected run, including its earlier cells, by one common offset. Opposite-direction spacing remains flexible so the renderer can preserve those joins. Same-gap reversals are separate runs and follow the spacing rules in section 7.3; they do not impose a full-edge equality on two cells occupying the same side of a boundary.
 
 When a later splitter action contains one or more previously visible splittee cords, the renderer translates that entire action vertically. Each continuing splittee's new cell is aligned so that its edge on the boundary it shares with the cord's previous cell coincides with that previous edge. All continuing splittees in one structurally valid action should imply the same translation; the implementation averages only to absorb floating-point differences.
 
@@ -312,15 +312,34 @@ The renderer therefore separates geometry from visibility:
 
 After each split event, the splitter and splittee exchange boundary positions exactly as they exchange adjacent lanes in the simulator. Both hidden trajectories are updated even though only the splittee cell is painted.
 
-### 7.3 Collision rule
+### 7.2.1 Adjacent-column splitter emergence
 
-Every base cell in a column must lie below the preceding cell in event order, with no interior overlap. This applies after turns, to cells of the same cord, and to role-transition cells. The development view's separate intersection triangles do not change the base-cell footprints.
+When a cord comes out as a splitter and becomes a splittee in the next column, place its returning splittee cell **vertically adjacent to its last split cell, with only a small downward offset**. It must sit slightly lower, not far below or above that cell.
+
+Use the event history in section 2.3: `H` is the cord's last event as a splitter, and `E` is its next participation as a splittee. This rule applies when their gap columns are adjacent (`abs(E.column - H.column) = 1`), in either horizontal direction. Compare their placement at the shared column boundary. Unrelated events between `H` and `E` do not turn this local emergence into a large vertical drop.
+
+Use Braid's cord identities, lane exchanges, and participation order to identify the emergence. Its event-by-event vertical spacing is not the Finished spacing: compact the intervening wait so the returning cell stays next to the exit. Anchor this relationship during layout and preserve it during final packing. The exact small offset is a local geometry choice; it must not grow with the number of intervening events or written rows.
+
+This placement rule applies to both Finished views and is independent of whether a transition triangle is geometrically eligible. Keep one splittee-coloured cell per event and keep the hidden splitter portion invisible.
+
+### 7.3 Column spacing and overlap
+
+Base cells are drawn in event order. Their vertical placement within a column depends on their split directions and connected cord runs:
+
+- **Different split directions:** a left-leaning cell and a right-leaning cell in the same column may partially overlap or be farther apart, leaving open space for cords with no split event there. Both are valid results of the cord layout. There is no fixed pitch, maximum gap, or requirement to pack these cells together. This flexibility does not depend on a role transition or matching cord identities or colours.
+- **Same split direction:** consecutive cells in the column that both lean left or both lean right must touch with no vertical gap and no interior overlap. The lower cell's top edge must coincide with the upper cell's bottom edge across the column's full width.
+
+These rules apply after turns, to cells of the same cord, and to role-transition cells in both Finished views. The development view's separate intersection triangles do not change the base-cell footprints or determine the overlap allowance.
 
 First group adjacent-gap appearances of a continuing splittee into one ribbon run. Acting as a splitter or returning through the same gap starts a different run. Every cell in a run receives the same final vertical translation.
 
-For each consecutive pair of cells in a column, constrain the lower cell's top edge to be at or below the upper cell's bottom edge at **both** column boundaries. Checking both endpoints separates the complete linear edges, including cells with opposite lean directions. A vertical bounding-box check alone is insufficient.
+For each consecutive same-direction pair in a column, enforce equality between the lower cell's top edge and the upper cell's bottom edge at **both** column boundaries. Checking both endpoints ensures complete edge contact without a gap or interior overlap. Do not impose that separation constraint on opposite-direction pairs, since opposite-direction placement must allow both partial overlap and open space. A vertical bounding-box check alone is insufficient to evaluate the actual cell edges.
 
-These column constraints define dependencies between ribbon runs. Propagate the minimum required downward offsets through those dependencies, then translate each entire run. Never skip packing because a row has a connected splittee, and never resolve a collision by moving just one cell away from its connected neighbor. Normalize the canvas bounds after this packing pass.
+These column constraints define dependencies between ribbon runs. Solve their vertical offsets together so that same-direction contact and full-edge cord continuity hold, while preserving flexible spacing between opposite directions. A pass that only pushes cells downward until all overlaps disappear does not satisfy these requirements. Never skip packing because a row has a connected splittee. Normalize the canvas bounds after this packing pass.
+
+For opposite-direction neighbours, retain the positions determined by their cord runs. Do not add a boundary-clearance constraint, force the later event below the earlier one, or pull the cells together to close a gap. Returning courses may place later events higher while the complete craft still grows downward. Prevent interior overlap between same-direction cells, including those separated by intervening opposite-direction events.
+
+Open space does not create extra split cells, visible splitter paths, or filler material. Keep full-edge joins intact; do not detach a continuing cord to satisfy an artificial spacing constraint between opposite directions.
 
 ### 7.4 Presentation
 
@@ -331,6 +350,8 @@ Finished view contains no written-row markers or repeat-boundary markers. Repeat
 The screenshot supplied at 22:42 on 2026-09-05 defines the corrected rendering: **extend the diagonal to its intersection in the neighbouring column and fill the extra triangle**. Preserve every original split-cell path. This supersedes the implementation that cut or moved both corners of a transition cell.
 
 The role-change detection in section 2.2 is unchanged. Apply this treatment to eligible transitions in both directions, including the double chevron's columns 5–6, 11–12, and 18–19. These locations come from event history and must not be hard-coded.
+
+The treatment reads placed cells and nothing else, so it does not belong to one placement. Any view that supplies cells — the packed v1 placement or the rule-solved v2 placement — receives the same triangles from the same event history, and any difference between them comes from geometry, through the eligibility checks in section 7.5.3, never from a view-specific rule.
 
 #### 7.5.1 Triangle geometry and colour
 
@@ -409,10 +430,12 @@ This gives 141 transition triangles above 552 unchanged split cells. At event 12
 - The ends of each cell's crossing diagonal lie on its two column boundaries before action-level translation.
 - A new splitter action follows the existing hidden trajectory of its stable splitter cord.
 - Every split updates both participating cords' hidden positions using the simulator's lane swap.
+- A splitter that next becomes a splittee in an adjacent column emerges vertically adjacent to its last split cell and slightly lower; unrelated intervening events must not introduce a large downward gap.
 - A cord's invisible splitter portion is never filled merely to connect two visible splittee cells.
 - Column packing moves complete ribbon runs together, preserving exact adjacent-gap splittee connections.
-- No two base cells in a column overlap, including splitter-to-splittee cells and same-gap returns.
-- Each ribbon run moves down by the minimum offset satisfying all of its column constraints.
+- Base cells in the same column may partially overlap only when they have opposite split directions (one left-leaning and one right-leaning). Opposite-direction cells may also leave open space for cords without split events; packing must not force that space closed.
+- Consecutive base cells in a column with the same split direction share a complete top-to-bottom edge, with no vertical gap and no interior overlap, including role-transition cells and same-gap returns.
+- Each ribbon run receives a common vertical offset satisfying its direction-dependent column constraints and preserving full-edge cord continuity.
 - Every layout footprint is a parallelogram whose two vertical sides, of length `cellSide`, lie on its two column boundaries. The base path keeps that footprint at transitions, with an extra triangle extending material across the shared boundary.
 - The layout footprint's tip corners use `tipAngle`; the triangle tip is determined by the intersection of the two neighbouring diagonals.
 - `cellSide` depends only on `theta` and `tipAngle`, never on the event or its column.
@@ -445,7 +468,7 @@ For the eight-cord chevron sample with four repeats:
 - cord `C04` appears as a splittee in columns 3, 2 and 1 on successive written rows, and those three cells form one edge-to-edge ribbon;
 - each cell uses the color of `splitteeId`, never `splitterId`;
 - no splitter path, starting cord, guide, lane number, row boundary, or repeat boundary is visible;
-- base-cell interiors do not overlap;
+- same-column base cells may partially overlap or leave open space when their split directions differ, while consecutive cells with the same split direction touch with no vertical gap or interior overlap;
 - the dimensions and event stepping satisfy the formulas in sections 5.1 and 7 at every supported angle; and
 - Back displays the same cells and colors as a horizontal mirror of Front.
 
@@ -453,8 +476,12 @@ For every valid pattern, the rendered SVG contains exactly one split cell for ev
 
 For the twenty-four cord mirrored diamonds, all uninterrupted splittee runs align their complete shared edges across the section change. In particular, event 127 (`C18` splitting `C01`) and event 149 (`C07` splitting `C01`) share both edge endpoints. Check every continuation at the angle-control limits, with identical colours, and under horizontal reflection.
 
-For the Wayuu sample, exact alignment also holds across its two single-split steps and into the returning section. Regression examples include the adjacent-gap `C20` join between events 77 and 85 and the same-gap `C03` return between events 65 and 82. The former aligns its complete shared edge; the latter stacks without overlap. Check all cell pairs in columns 5–9 after both turns, and verify that full-edge alignment of adjacent-gap continuations still holds. Run both assertions together for every sample at the angle-control limits.
+For the Wayuu sample, exact alignment also holds across its two single-split steps and into the returning section. Regression examples include the adjacent-gap `C20` join between events 77 and 85 and the same-gap `C03` return between events 65 and 82. The former aligns its complete shared edge; the latter stacks according to its split directions under section 7.3. Check all cell pairs in columns 5–9 after both turns against the direction-dependent overlap rules, and verify that full-edge alignment of adjacent-gap continuations still holds. Run both assertions together for every sample at the angle-control limits. The `C12` join between events 163 and 177 must also remain fully aligned. Opposite-direction events 62 and 85 in one column leave open space at both boundaries; preserve that space and the `C20` join into event 85. In the mirrored diamonds, events 118 and 140 provide another opposite-direction gap regression.
 
-Transition acceptance checks must cover both role-change directions, both lean directions, identical cord colours, unrelated intervening events, all six double-chevron transition columns, an ordinary splittee continuation after a transition, and geometry fallback at detached or unsupported joins. Verify that Finished v1 retains the layout-cell paths and that Front/Back mirror the same transition surfaces without changing event or host identity.
+Column-spacing acceptance checks must cover consecutive left-leaning pairs and consecutive right-leaning pairs with zero vertical gap and no interior overlap, plus opposite-leaning pairs with partial overlap and pairs with open space at both boundaries. Include both orders of opposite leans, role-transition cells, same-gap returns, and identical cord colours. Verify that the rules hold at the angle-control limits and under Front/Back reflection while preserving every adjacent-gap cord join and keeping exactly one cell per split event.
+
+Transition acceptance checks must cover both role-change directions, both lean directions, identical cord colours, unrelated intervening events, all six double-chevron transition columns, an ordinary splittee continuation after a transition, and geometry fallback at detached or unsupported joins. Verify that Finished v1 retains the layout-cell paths, that v2 and dev produce the same transition set from their own placements, and that Front/Back mirror the same transition surfaces without changing event or host identity.
+
+For the sixteen-cord Braid sample, `C10` acts as splitter in event 14 (column 8), then returns as splittee in event 34 (column 7). Place event 34 vertically adjacent to event 14 and slightly lower. The 19 intervening events must neither push that emergence far downward nor allow it to move above its exit. Check the same relationship under Front/Back reflection and at the angle-control limits, with and without eligible transition triangles.
 
 For the red–gold screenshot at the default angles and `columnWidth = 64`, event 22 adds a gold triangle into column 6 with tip `(380, 305.128129)`. Event 40 adds the small red triangle into column 5 with tip `(337.333333, 379.028964)`. These coordinates use the default layout padding. Both triangles remain visible above later base cells, and all original cell paths are unchanged.

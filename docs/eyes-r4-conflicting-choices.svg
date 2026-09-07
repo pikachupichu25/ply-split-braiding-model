@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 833" role="img" aria-labelledby="choices-title choices-desc"><title id="choices-title">Event 91 placed by two conflicting anchor choices</title><desc id="choices-desc">Two panels hold host event 76 at the same position. Left: apply R4 directly to the C01 return, placing event 91 half a cell side below event 76. With R2 and R3 exact, the C02 departure 82 to 88 would then need minus one and a half cell sides, missing its midpoint target. Right: centre the C02 departure and preserve R2 and R3; event 91 must be two and a half cell sides below event 76, missing its own midpoint by 8D, or two cell sides at the default angles. Dashed event 91 marks its midpoint target. These are local geometric consequences of the audited chain, not complete alternative braid layouts.</desc><style>.label{font:14px 'Courier New',monospace;fill:#263b36}.small{font:12px 'Courier New',monospace;fill:#5e6a63}.big{font:700 24px Georgia,serif;fill:#b33f25}.red{font:14px 'Courier New',monospace;fill:#b33f25}.heading{font:700 17px Georgia,serif;fill:#263b36}</style>
+<text x="225" y="30" class="heading" text-anchor="middle">A / CENTRE THE RETURN</text>
+<text x="225" y="56" class="label" text-anchor="middle">Follow R4 at e76 → e91</text>
+<text x="675" y="30" class="heading" text-anchor="middle">B / CENTRE THE DEPARTURE</text>
+<text x="675" y="56" class="label" text-anchor="middle">Follow R4 at e82 → e88 + R2/R3</text>
+<line x1="450" y1="76" x2="450" y2="662" stroke="#ccd2c5" stroke-width="1.5" />
+<line x1="225" y1="100" x2="225" y2="520" stroke="#c6cec2" stroke-width="1.5" stroke-dasharray="3 6"/><polygon points="143,205 143,285 225,225 225,145" fill="#bed9d2" stroke="#274d48" stroke-width="1.5" /><polygon points="307,245 307,325 225,265 225,185" fill="#e8ba9d" stroke="#274d48" stroke-width="1.5" /><text x="184" y="220" class="heading" text-anchor="middle">e76</text><text x="266" y="260" class="heading" text-anchor="middle">e91</text><circle cx="225" cy="185" r="6" fill="#faf9f3" stroke="#18786c" stroke-width="3"/><circle cx="225" cy="185" r="4" fill="#b33f25"/><line x1="675" y1="100" x2="675" y2="520" stroke="#c6cec2" stroke-width="1.5" stroke-dasharray="3 6"/><polygon points="593,205 593,285 675,225 675,145" fill="#bed9d2" stroke="#274d48" stroke-width="1.5" /><polygon points="757,245 757,325 675,265 675,185" fill="none" stroke="#274d48" stroke-width="1.5" style="stroke:#18786c;stroke-dasharray:5 5"/><polygon points="757,405 757,485 675,425 675,345" fill="#e8ba9d" stroke="#274d48" stroke-width="1.5" /><text x="634" y="220" class="heading" text-anchor="middle">e76</text><text x="716" y="420" class="heading" text-anchor="middle">e91</text><circle cx="675" cy="185" r="6" fill="#faf9f3" stroke="#18786c" stroke-width="3"/><circle cx="675" cy="345" r="4" fill="#b33f25"/>
+<text x="95" y="113" class="small" >C01 return</text><text x="545" y="113" class="small" >Same host, same scale</text>
+<line x1="345" y1="145" x2="345" y2="185" stroke="#18786c" stroke-width="1.5" /><line x1="338" y1="145" x2="352" y2="145" stroke="#18786c" stroke-width="1.5" /><line x1="338" y1="185" x2="352" y2="185" stroke="#18786c" stroke-width="1.5" />
+<text x="359" y="172" class="heading" >½S</text>
+<line x1="802" y1="185" x2="802" y2="345" stroke="#b33f25" stroke-width="1.5" /><line x1="795" y1="185" x2="809" y2="185" stroke="#b33f25" stroke-width="1.5" /><line x1="795" y1="345" x2="809" y2="345" stroke="#b33f25" stroke-width="1.5" />
+<text x="820" y="261" class="big" >8D</text><text x="820" y="284" class="small" >= 2S</text>
+<text x="725" y="243" class="small" text-anchor="middle">R4 target</text>
+<text x="225" y="376" class="heading" text-anchor="middle">Return midpoint satisfied</text>
+<text x="225" y="402" class="label" text-anchor="middle">e91 offset = ½S</text>
+<text x="225" y="426" class="small" text-anchor="middle">+115.470 at W=100</text>
+<text x="675" y="529" class="heading" text-anchor="middle">Return midpoint missed</text>
+<text x="675" y="555" class="label" text-anchor="middle">e91 offset = ½S + 8D = 2½S</text>
+<text x="675" y="579" class="small" text-anchor="middle">+577.350 at W=100</text>
+<line x1="40" y1="605" x2="860" y2="605" stroke="#ccd2c5" stroke-width="1.5" />
+<text x="225" y="634" class="heading" text-anchor="middle">What happens to the departure?</text>
+<text x="225" y="660" class="red" text-anchor="middle">e88 − e82 = ½S − 8D = −1½S</text>
+<text x="225" y="682" class="small" text-anchor="middle">−346.410: its midpoint is missed</text>
+<text x="675" y="634" class="heading" text-anchor="middle">Departure stays centred</text>
+<text x="675" y="660" class="label" text-anchor="middle">e88 − e82 = ½S</text>
+<text x="675" y="682" class="small" text-anchor="middle">+115.470: its midpoint is satisfied</text>
+<g aria-label="Event details"><line x1="25" y1="723" x2="875" y2="723" stroke="#ccd2c5"/><text x="30" y="748" class="small">EVENT · SPLITTER → SPLITTEE · COLUMN</text><text x="30" y="776" class="label">e76 · C01 → C10 · col 5</text><text x="480" y="776" class="label">e91 · C02 → C01 · col 6</text><text x="30" y="801" class="label">e82 · C19 → C02 · col 10</text><text x="480" y="801" class="label">e88 · C02 → C18 · col 9</text></g></svg>

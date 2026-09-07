@@ -1,4 +1,4 @@
-export const wayuuFajon20Pattern = `# Como hacer tira, gasa, fajon wayuu from YouTube
+export const wayuuFajon20Pattern = `# Eyes
 color: AABCBBCBAAAABCBBCBAA
 palette: A=brown, B=white, C=lightblue
 

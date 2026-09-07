@@ -27,7 +27,7 @@ type LayoutOptions = {
   tipAngle?: number;
 };
 
-const collisionTolerance = 0.001;
+const layoutTolerance = 0.000001;
 
 export function buildFinishedLayout(
   simulation: Simulation,
@@ -54,6 +54,7 @@ export function buildFinishedLayout(
     (simulation.snapshots[0]?.lanes ?? []).map((cord) => [cord.id, 0]),
   );
   const lastVisibleByCord = new Map<string, FinishedCell>();
+  const lastSplitByCord = new Map<string, FinishedCell>();
   const lastRoleByCord = new Map<string, 'splitter' | 'splittee'>();
   const placed: FinishedCell[] = [];
   let previousActionStart = 0;
@@ -61,6 +62,9 @@ export function buildFinishedLayout(
   splitActions(simulation.events).forEach((action) => {
     const splitterId = action[0]?.splitterId;
     if (!splitterId) return;
+    // The splitter's visible run ends here, but its last cell still places
+    // the cell in which it leaves the surface.
+    const departure = lastVisibleByCord.get(splitterId);
     lastVisibleByCord.delete(splitterId);
 
     const initialY = Math.max(cordY.get(splitterId) ?? 0, previousActionStart);
@@ -89,11 +93,12 @@ export function buildFinishedLayout(
       );
     });
 
-    const aligned = alignContinuingSplittees(candidates, lastVisibleByCord);
-    // Establish exact ribbon connections first. The final packing pass moves
-    // whole ribbons together to resolve collisions without breaking a join.
-    const shift = aligned ? 0 : minimumDownwardShift(candidates, placed, columnWidth, lastVisibleByCord);
-    const shifted = aligned ?? candidates.map((cell) => translateCell(cell, 0, shift));
+    const aligned = alignContinuingSplittees(
+      candidates, lastVisibleByCord, lastSplitByCord, departure, cellSide,
+    );
+    // Establish exact ribbon connections first. Final packing handles column
+    // spacing for both lean directions while preserving these joins.
+    const shifted = aligned ?? candidates;
     placed.push(...shifted);
     previousActionStart = shifted[0].points[0].y;
 
@@ -102,6 +107,8 @@ export function buildFinishedLayout(
       cordY.set(cell.event.splitterId, end.y);
       cordY.set(cell.event.splitteeId, end.y);
       lastVisibleByCord.set(cell.event.splitteeId, cell);
+      lastSplitByCord.set(cell.event.splitterId, cell);
+      lastSplitByCord.delete(cell.event.splitteeId);
       lastRoleByCord.set(cell.event.splitteeId, 'splittee');
     });
     lastRoleByCord.set(splitterId, 'splitter');
@@ -141,55 +148,130 @@ export function buildFinishedLayout(
 }
 
 function packConnectedRibbons(cells: FinishedCell[]): FinishedCell[] {
-  type Ribbon = { shift: number; incoming: number; next: { ribbon: number; distance: number }[] };
-  const ribbons: Ribbon[] = [];
-  const ribbonForCell = new Map<FinishedCell, number>();
-  const lastParticipation = new Map<string, FinishedCell>();
-  const lastInColumn = new Map<number, FinishedCell>();
+  type Constraint = { from: number; to: number; distance: number };
+  const constraints: Constraint[] = [];
+  const lastParticipation = new Map<string, number>();
+  const lastSplitByCord = new Map<string, number>();
+  const lastSplitteeByCord = new Map<string, number>();
+  const transitions: { from: number; to: number }[] = [];
+  const lastInColumn = new Map<number, number>();
+  const lastByDirection = new Map<string, number>();
+  const leansRight = (cell: FinishedCell) => cell.event.toLane > cell.event.fromLane;
 
-  for (const cell of cells) {
-    const previous = lastParticipation.get(cell.event.splitteeId);
-    // Only adjacent-gap continuations share a full edge. A return through the
-    // same gap starts a new run: matching that same-side edge would overlay
-    // the two footprints, so the returning cell must stack below it instead.
-    const continues = previous?.event.splitteeId === cell.event.splitteeId
-      && Math.abs(previous.column - cell.column) === 1;
-    const ribbon = continues ? ribbonForCell.get(previous)! : ribbons.length;
-    if (!continues) ribbons.push({ shift: 0, incoming: 0, next: [] });
-    ribbonForCell.set(cell, ribbon);
+  // Cells joined by an exact contact move as one body. Tracking those bodies
+  // keeps a later exact rule from contradicting the ones already applied.
+  const body = cells.map((_, index) => index);
+  const bodyOf = (index: number): number =>
+    body[index] === index ? index : (body[index] = bodyOf(body[index]));
+  const connect = (from: number, to: number, distance: number) => {
+    constraints.push({ from, to, distance }, { from: to, to: from, distance: -distance });
+    body[bodyOf(from)] = bodyOf(to);
+  };
+  const separation = (above: FinishedCell, below: FinishedCell) => {
+    const left = Math.min(...below.points.map(p => p.x));
+    const right = Math.max(...below.points.map(p => p.x));
+    return [left, right].map(x =>
+      verticalRange(above, x).bottom - verticalRange(below, x).top);
+  };
 
-    const above = lastInColumn.get(cell.column);
-    if (above) {
-      const predecessor = ribbonForCell.get(above)!;
-      // Both diagonal edges are linear. Separating their vertical intervals
-      // at both column boundaries prevents interior overlap throughout it.
-      const left = Math.min(...cell.points.map(p => p.x));
-      const right = Math.max(...cell.points.map(p => p.x));
-      const distance = Math.max(
-        verticalRange(above, left).bottom - verticalRange(cell, left).top,
-        verticalRange(above, right).bottom - verticalRange(cell, right).top,
-      );
-      ribbons[predecessor].next.push({ ribbon, distance });
-      ribbons[ribbon].incoming += 1;
+  for (const [index, cell] of cells.entries()) {
+    const previousIndex = lastParticipation.get(cell.event.splitteeId);
+    const previous = previousIndex === undefined ? undefined : cells[previousIndex];
+    if (previous?.event.splitteeId === cell.event.splitteeId
+      && Math.abs(previous.column - cell.column) === 1) {
+      // Adjacent splittee cells were aligned before packing. Their full-edge
+      // join stays fixed, including across changes in the working direction.
+      connect(previousIndex!, index, 0);
     }
-    lastInColumn.set(cell.column, cell);
-    lastParticipation.set(cell.event.splitteeId, cell);
-    lastParticipation.set(cell.event.splitterId, cell);
+
+    const aboveIndex = lastInColumn.get(cell.column);
+    if (aboveIndex !== undefined) {
+      const above = cells[aboveIndex];
+      const distances = separation(above, cell);
+      if (leansRight(above) === leansRight(cell)) {
+        // Equal slopes: matching one endpoint matches the complete edge.
+        connect(aboveIndex, index, distances[0]);
+      }
+      // Opposite directions have no fixed packing distance. Their cord runs
+      // determine placement: partial overlap and open space are both valid.
+      // Event order is preserved in drawing order, not by forcing these
+      // different courses into a compact vertical stack.
+    }
+
+    // An intervening opposite lean must not allow two same-leaning cells to
+    // overlap. The nearest earlier cell of each direction bounds all of them.
+    const directionKey = `${cell.column}:${leansRight(cell)}`;
+    const sameDirection = lastByDirection.get(directionKey);
+    if (sameDirection !== undefined && sameDirection !== aboveIndex) {
+      constraints.push({ from: sameDirection, to: index,
+        distance: Math.max(...separation(cells[sameDirection], cell)) });
+    }
+    lastByDirection.set(directionKey, index);
+    lastInColumn.set(cell.column, index);
+    const hostIndex = lastSplitByCord.get(cell.event.splitteeId);
+    if (hostIndex !== undefined
+      && cells[hostIndex].event.toLane === cell.event.toLane
+      && Math.abs(cells[hostIndex].column - cell.column) === 1) {
+      transitions.push({ from: hostIndex, to: index });
+    }
+
+    const leavingIndex = lastSplitteeByCord.get(cell.event.splitterId);
+    if (leavingIndex !== undefined
+      && cells[leavingIndex].event.fromLane === cell.event.fromLane
+      && Math.abs(cells[leavingIndex].column - cell.column) === 1) {
+      transitions.push({ from: leavingIndex, to: index });
+    }
+
+    lastParticipation.set(cell.event.splitteeId, index);
+    lastParticipation.set(cell.event.splitterId, index);
+    lastSplitByCord.set(cell.event.splitterId, index);
+    lastSplitByCord.delete(cell.event.splitteeId);
+    lastSplitteeByCord.set(cell.event.splitteeId, index);
+    lastSplitteeByCord.delete(cell.event.splitterId);
   }
 
-  // Column order supplies a dependency graph between runs. Its longest paths
-  // give the smallest downward translations satisfying every column at once.
-  const ready = ribbons.flatMap((ribbon, index) => ribbon.incoming === 0 ? [index] : []);
-  for (let cursor = 0; cursor < ready.length; cursor += 1) {
-    const current = ribbons[ready[cursor]];
-    for (const edge of current.next) {
-      const next = ribbons[edge.ribbon];
-      next.shift = Math.max(next.shift, current.shift + edge.distance);
-      next.incoming -= 1;
-      if (next.incoming === 0) ready.push(edge.ribbon);
-    }
+  // A cord changing roles was aligned to the centre of its neighbour's side.
+  // Hold that placement wherever the cord joins and column contacts have not
+  // already fixed the two cells relative to each other, and admit each one
+  // only while the whole system still resolves: a role change never reopens
+  // a cord join, a column contact, or an interior overlap to make room for
+  // itself. Where it cannot be held, the cell keeps its aligned placement.
+  let shifts = solveShifts(constraints, cells.length).shifts;
+  if (!shifts) {
+    throw new Error('Finished layout has incompatible same-direction spacing constraints.');
   }
-  return cells.map(cell => translateCell(cell, 0, ribbons[ribbonForCell.get(cell)!].shift));
+  for (const { from, to } of transitions) {
+    if (bodyOf(from) === bodyOf(to)) continue;
+    const held: Constraint[] = [
+      { from, to, distance: 0 }, { from: to, to: from, distance: 0 },
+    ];
+    const solved = solveShifts([...constraints, ...held], cells.length);
+    if (!solved.shifts) continue;
+    constraints.push(...held);
+    body[bodyOf(from)] = bodyOf(to);
+    shifts = solved.shifts;
+  }
+
+  return cells.map((cell, index) => translateCell(cell, 0, shifts![index]));
+}
+
+function solveShifts(
+  constraints: { from: number; to: number; distance: number }[],
+  count: number,
+): { shifts?: number[]; blocked: Set<number> } {
+  const shifts = new Array<number>(count).fill(0);
+  for (let pass = 0; pass < count; pass += 1) {
+    const changed = new Set<number>();
+    for (const { from, to, distance } of constraints) {
+      const required = shifts[from] + distance;
+      if (required <= shifts[to] + layoutTolerance) continue;
+      shifts[to] = required;
+      changed.add(to);
+    }
+    if (!changed.size) return { shifts, blocked: changed };
+    if (pass === count - 1) return { blocked: changed };
+  }
+  return { blocked: new Set<number>() };
 }
 
 function verticalRange(cell: FinishedCell, x: number): { top: number; bottom: number } {
@@ -271,15 +353,35 @@ function downwardLongAxis(cell: FinishedCell): FinishedPoint {
 function alignContinuingSplittees(
   candidates: FinishedCell[],
   lastVisibleByCord: Map<string, FinishedCell>,
+  lastSplitByCord: Map<string, FinishedCell>,
+  departure: FinishedCell | undefined,
+  cellSide: number,
 ): FinishedCell[] | undefined {
   const anchors = candidates.flatMap((cell, index) => {
-    const previous = lastVisibleByCord.get(cell.event.splitteeId);
-    if (!previous || previous.event.fromLane !== cell.event.toLane) return [];
-    // The splittee leaves the old cell at the splitter's starting lane and
-    // enters the new cell at the splitter's destination lane.
-    const outgoingTop = previous.points[0];
     const incomingTop = cell.points[cell.event.toLane > cell.event.fromLane ? 3 : 1];
-    return [{ index, x: outgoingTop.x - incomingTop.x, y: outgoingTop.y - incomingTop.y }];
+    const previous = lastVisibleByCord.get(cell.event.splitteeId);
+    if (previous && previous.event.fromLane === cell.event.toLane) {
+      // The splittee leaves the old cell at the splitter's starting lane and
+      // enters the new cell at the splitter's destination lane.
+      const outgoingTop = previous.points[0];
+      return [{ index, x: outgoingTop.x - incomingTop.x, y: outgoingTop.y - incomingTop.y }];
+    }
+    // A cord with no visible end may still be changing roles across a shared
+    // boundary, which anchors the cell just as exactly. Both directions put
+    // the later cell's top corner at the centre of the side the earlier cell
+    // keeps there: the returning cord enters at its host's centre, and the
+    // departing cord leaves at the centre of its own last visible cell.
+    const host = lastSplitByCord.get(cell.event.splitteeId);
+    if (host?.event.toLane === cell.event.toLane) {
+      const centre = transitionCentre(host, cell, incomingTop.x, cellSide);
+      if (centre !== undefined) return [{ index, x: 0, y: centre - incomingTop.y }];
+    }
+    const outgoingTop = cell.points[0];
+    if (departure?.event.fromLane === cell.event.fromLane) {
+      const centre = transitionCentre(departure, cell, outgoingTop.x, cellSide);
+      if (centre !== undefined) return [{ index, x: 0, y: centre - outgoingTop.y }];
+    }
+    return [];
   });
   if (!anchors.length) return undefined;
 
@@ -294,6 +396,22 @@ function alignContinuingSplittees(
       left.x + ratio * (right.x - left.x),
       left.y + ratio * (right.y - left.y));
   });
+}
+
+function transitionCentre(
+  neighbour: FinishedCell,
+  cell: FinishedCell,
+  boundaryX: number,
+  cellSide: number,
+): number | undefined {
+  // The cord has not moved between the two events, so both cells keep a full
+  // side on the boundary at its lane.
+  if (Math.abs(neighbour.column - cell.column) !== 1) return undefined;
+  const edge = neighbour.points.filter(point => Math.abs(point.x - boundaryX) < layoutTolerance);
+  if (edge.length !== 2) return undefined;
+  // Meeting at the centre of that side keeps the role change beside its own
+  // neighbour, however many unrelated events ran in between.
+  return Math.min(...edge.map(point => point.y)) + cellSide / 2;
 }
 
 function actionStepDirection(
@@ -317,79 +435,4 @@ function actionStepDirection(
     return offsets.reduce((sum, y) => sum + (y - mean) ** 2, 0);
   };
   return error(-1) + 0.001 < error(1) ? -1 : 1;
-}
-
-function minimumDownwardShift(
-  candidates: FinishedCell[],
-  placed: FinishedCell[],
-  columnWidth: number,
-  lastVisibleByCord: Map<string, FinishedCell>,
-): number {
-  if (!placed.length || !intersectsPlaced(candidates, placed, lastVisibleByCord)) return 0;
-
-  const step = Math.max(0.5, columnWidth / 100);
-  const placedBottom = Math.max(...placed.flatMap((cell) => cell.points.map((point) => point.y)));
-  const candidateTop = Math.min(...candidates.flatMap((cell) => cell.points.map((point) => point.y)));
-  const maximumShift = placedBottom - candidateTop + columnWidth * 2;
-
-  for (let shift = step; shift <= maximumShift; shift += step) {
-    const shifted = candidates.map((cell) => translateCell(cell, 0, shift));
-    if (!intersectsPlaced(shifted, placed, lastVisibleByCord)) {
-      let lower = shift - step;
-      let upper = shift;
-      for (let iteration = 0; iteration < 20; iteration += 1) {
-        const middle = (lower + upper) / 2;
-        const middleCandidates = candidates.map((cell) =>
-          translateCell(cell, 0, middle),
-        );
-        if (intersectsPlaced(middleCandidates, placed, lastVisibleByCord)) lower = middle;
-        else upper = middle;
-      }
-      return upper;
-    }
-  }
-
-  return maximumShift;
-}
-
-function intersectsPlaced(
-  candidates: FinishedCell[],
-  placed: FinishedCell[],
-  lastVisibleByCord: Map<string, FinishedCell>,
-): boolean {
-  return candidates.some((candidate) =>
-    !candidate.allowsOverlap
-    && placed.some((existing) => {
-      // Two footprints at a turn describe the same continuous cord. Only its
-      // immediately preceding visible cell may overlap at this return edge.
-      const turnsBack = existing === lastVisibleByCord.get(candidate.event.splitteeId)
-        && existing.column === candidate.column
-        && existing.event.fromLane === candidate.event.toLane;
-      return !turnsBack && polygonsOverlap(candidate.points, existing.points);
-    }),
-  );
-}
-
-function polygonsOverlap(first: FinishedPoint[], second: FinishedPoint[]): boolean {
-  return [...axesFor(first), ...axesFor(second)].every((axis) => {
-    const firstProjection = project(first, axis);
-    const secondProjection = project(second, axis);
-    return Math.min(firstProjection.max, secondProjection.max)
-      - Math.max(firstProjection.min, secondProjection.min) > collisionTolerance;
-  });
-}
-
-function axesFor(points: FinishedPoint[]): FinishedPoint[] {
-  return points.map((point, index) => {
-    const next = points[(index + 1) % points.length];
-    const edgeX = next.x - point.x;
-    const edgeY = next.y - point.y;
-    const length = Math.hypot(edgeX, edgeY);
-    return { x: -edgeY / length, y: edgeX / length };
-  });
-}
-
-function project(points: FinishedPoint[], axis: FinishedPoint): { min: number; max: number } {
-  const values = points.map((point) => point.x * axis.x + point.y * axis.y);
-  return { min: Math.min(...values), max: Math.max(...values) };
 }
