@@ -16,7 +16,7 @@ export default function App() {
   const [source, setSource] = useState(() => localStorage.getItem(savedPatternKey) ?? defaultSample.source);
   const [previewRepeats, setPreviewRepeats] = useState(4);
   const [lengthMode, setLengthMode] = useState<'cycle' | 'manual'>('cycle');
-  const [view, setView] = useState<'finished-v1' | 'finished-v2' | 'finished-dev' | 'braid'>('finished-v1');
+  const [view, setView] = useState<'finished-v1' | 'finished-v2' | 'finished-dev' | 'braid'>('finished-v2');
   const [mirrorFace, setMirrorFace] = useState<Face>('front');
   const [finishedAngle, setFinishedAngle] = useState(30);
   const [finishedTip, setFinishedTip] = useState(30);
