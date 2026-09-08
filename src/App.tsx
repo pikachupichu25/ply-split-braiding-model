@@ -241,15 +241,18 @@ export default function App() {
             />
           )}
 
-          {view === 'finished-v1' ? (
-            <p className="finished-caption">Finished v1 shows one sharp splittee-coloured cell per split. Cells with the same lean touch edge to edge; opposite leans can partially overlap or leave open space.</p>
-          ) : view === 'finished-v2' ? (
-            <p className="finished-caption">Finished v2 places every cell from three rules only — R1 the splitter’s course, R2 the cord’s full-edge join, R4 the half-side role change — in that order of authority, with no column packing. Where the action’s corner contact disagrees with an exact cord or role anchor, the action bends; the tally under the preview counts what each rule holds. On top of that placement, transition edges extend to their intersection in the neighbouring column and fill the extra triangle with the continuing cord’s colour.</p>
-          ) : view === 'finished-dev' ? (
-            <p className="finished-caption">Development preview: transition edges extend to their intersection in the neighbouring column, filling the extra triangle with the continuing cord’s colour.</p>
-          ) : (
-            <p className="finished-caption">The braid view always draws a single repeat, regardless of the preview length control below — switch to a Finished view to see the pattern build across multiple repeats. Each cord keeps its colour along its whole path, and each splitter stays visible behind its splittee at their crossing.</p>
-          )}
+          <details className="preview-disclosure">
+            <summary>About this view</summary>
+            {view === 'finished-v1' ? (
+              <p className="finished-caption">Finished v1 shows one sharp splittee-coloured cell per split. Cells with the same lean touch edge to edge; opposite leans can partially overlap or leave open space.</p>
+            ) : view === 'finished-v2' ? (
+              <p className="finished-caption">Finished v2 places every cell from three rules only — R1 the splitter’s course, R2 the cord’s full-edge join, R4 the half-side role change — in that order of authority, with no column packing. Where the action’s corner contact disagrees with an exact cord or role anchor, the action bends; the placement audit counts what each rule holds. On top of that placement, transition edges extend to their intersection in the neighbouring column and fill the extra triangle with the continuing cord’s colour.</p>
+            ) : view === 'finished-dev' ? (
+              <p className="finished-caption">Development preview: transition edges extend to their intersection in the neighbouring column, filling the extra triangle with the continuing cord’s colour.</p>
+            ) : (
+              <p className="finished-caption">The braid view always draws a single repeat, regardless of the preview length control below — switch to a Finished view to see the pattern build across multiple repeats. Each cord keeps its colour along its whole path, and each splitter stays visible behind its splittee at their crossing.</p>
+            )}
+          </details>
         </section>
       </section>
 
@@ -528,16 +531,19 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
         </svg>
         {!simulation.events.length && <div className="empty-canvas">Your finished v2 preview will appear here.</div>}
       </div>
-      <ul className="rule-tally" aria-label="Placement rules held by this layout">
-        {tally.map((rule) => (
-          <li key={rule.label} data-complete={rule.held === rule.total}>
-            <b>{rule.label}</b>
-            <span>{rule.held}/{rule.total}</span>
-            <span className="quiet">{rule.note}</span>
-          </li>
-        ))}
-        <li><b>runs</b><span>{layout.runs}</span><span className="quiet">bodies no rule ties together</span></li>
-      </ul>
+      <details className="preview-disclosure preview-disclosure--audit">
+        <summary>Placement audit</summary>
+        <ul className="rule-tally" aria-label="Placement rules held by this layout">
+          {tally.map((rule) => (
+            <li key={rule.label} data-complete={rule.held === rule.total}>
+              <b>{rule.label}</b>
+              <span>{rule.held}/{rule.total}</span>
+              <span className="quiet">{rule.note}</span>
+            </li>
+          ))}
+          <li><b>runs</b><span>{layout.runs}</span><span className="quiet">bodies no rule ties together</span></li>
+        </ul>
+      </details>
     </>
   );
 }

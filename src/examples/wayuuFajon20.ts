@@ -1,5 +1,4 @@
 export const wayuuFajon20Pattern = `# Eyes
-# color: AABCBBCBAAAABCBBCBAA
 color:   ABCBAABCBAABCBAABCBA
 palette: A=brown, B=white, C=lightblue
 
