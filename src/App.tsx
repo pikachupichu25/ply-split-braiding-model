@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultSample, samplePatterns } from './examples';
 import { findFullCycle } from './domain/cycle';
 import { buildFinishedLayout } from './domain/finishedLayout';
@@ -138,14 +138,53 @@ export default function App() {
           <p className="sample-summary">{activeSample?.summary ?? 'Edited draft — pick a sample to start again.'}</p>
 
           <label className="editor-label" htmlFor="pattern-source">SCOT source</label>
-          <textarea
-            id="pattern-source"
-            value={source}
-            onChange={(event) => setSource(event.target.value)}
-            spellCheck={false}
-            aria-describedby="notation-help"
-          />
+          <DebouncedPatternEditor value={source} onCommit={setSource} />
           <p id="notation-help" className="editor-help">Use fixed front-oriented lane numbers. Optionally define colours with <code>palette: A=#d76b52, B=lightblue</code>; any omitted symbol keeps its current default colour. A turn reverses the visible lane labels, while each cord retains its own hidden identity.</p>
+
+          <details className="preview-disclosure notation-help-disclosure">
+            <summary>How to read this notation</summary>
+            <div className="notation-help">
+              <dl>
+                <div>
+                  <dt><code>color: CBAAAABC</code></dt>
+                  <dd>One colour letter per cord, left to right — at least three cords. Repeated letters just mean repeated colours; each position is still its own cord.</dd>
+                </div>
+                <div>
+                  <dt><code>palette: A=#d76b52, B=lightblue</code></dt>
+                  <dd>Optional. Maps a colour letter to an exact swatch (hex or CSS colour name). Leave a letter out to keep its default colour.</dd>
+                </div>
+                <div>
+                  <dt><code>1 1&gt;2,3,4</code></dt>
+                  <dd>Row 1: the cord at lane 1 splits through the cords at lanes 2, 3, then 4, in that order. Lane numbers are positions in the row being worked, not fixed per-cord IDs — whichever cord currently sits there is the one used.</dd>
+                </div>
+                <div>
+                  <dt>after every row</dt>
+                  <dd>The braid turns over automatically, so the next row is read on the new working face — each cord keeps its own identity even as the visible lane order flips.</dd>
+                </div>
+                <div>
+                  <dt><code>[repeat 1-2]</code></dt>
+                  <dd>Repeats rows 1–2 until the braid closes into a full cycle, or up to the preview limit if it never closes.</dd>
+                </div>
+                <div>
+                  <dt><code>[repeat 1-2 x 6]</code></dt>
+                  <dd>Same, but with a fixed count — six repeats of the unit, no more. A pattern can hold several non-overlapping repeat ranges.</dd>
+                </div>
+                <div>
+                  <dt><code># note</code></dt>
+                  <dd>A comment, from <code>#</code> to the end of the line. Ignored by the parser — useful for notes to yourself.</dd>
+                </div>
+              </dl>
+              <pre>{`# Eight-cord SCOT chevron
+color: CBAAAABC
+palette: A=#d3a448, B=#77b6c9, C=#d76b52
+
+1 1>2,3,4
+2 8>7,6,5,4
+
+[repeat 1-2]`}</pre>
+              <p className="finished-caption">This is the Chevron sample from the picker above: cord 1 splits across to lane 4, the braid turns, then cord 8 splits back across to lane 4 from the other edge — repeating to build the zig-zag.</p>
+            </div>
+          </details>
 
           <section className="palette-panel" aria-labelledby="palette-title">
             <div className="section-kicker"><span>Colour key</span><span>{parsed.pattern?.colors.length ?? 0} cords</span></div>
@@ -301,6 +340,46 @@ export default function App() {
   );
 }
 
+function DebouncedPatternEditor({ value, onCommit }: {
+  value: string;
+  onCommit: (value: string) => void;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (commitTimerRef.current !== null) {
+      clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+
+    const textarea = textareaRef.current;
+    if (textarea && textarea.value !== value) textarea.value = value;
+  }, [value]);
+
+  useEffect(() => () => {
+    if (commitTimerRef.current !== null) clearTimeout(commitTimerRef.current);
+  }, []);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      id="pattern-source"
+      defaultValue={value}
+      onChange={(event) => {
+        const nextValue = event.currentTarget.value;
+        if (commitTimerRef.current !== null) clearTimeout(commitTimerRef.current);
+        commitTimerRef.current = setTimeout(() => {
+          commitTimerRef.current = null;
+          onCommit(nextValue);
+        }, 1000);
+      }}
+      spellCheck={false}
+      aria-describedby="notation-help"
+    />
+  );
+}
+
 type DiagramProps = {
   simulation: Simulation;
   colors: Map<string, string>;
@@ -328,7 +407,10 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
     return 58 + displayIndex * laneGap;
   };
   const yAt = (snapshotIndex: number) => 56 + snapshotIndex * courseGap;
-  const labelY = yAt(Math.max(1, eventCount)) + 30;
+  const tailLength = courseGap * 4;
+  const tailBottomY = yAt(Math.max(1, eventCount)) + tailLength;
+  const tailSlant = 6;
+  const labelY = tailBottomY + 30;
   const height = Math.max(330, labelY + 34);
   const pointFor = (cordId: string, snapshotIndex: number) => {
     const laneIndex = simulation.snapshots[snapshotIndex]?.lanes.findIndex((cord) => cord.id === cordId) ?? 0;
@@ -360,6 +442,8 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
             events={simulation.events}
             colors={colors}
             pointFor={pointFor}
+            tailBottomY={tailBottomY}
+            tailSlant={tailSlant}
             layer="splitter"
             tooltip={tooltip}
           />
@@ -372,6 +456,8 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
             events={simulation.events}
             colors={colors}
             pointFor={pointFor}
+            tailBottomY={tailBottomY}
+            tailSlant={tailSlant}
             layer="surface"
             tooltip={tooltip}
           />
@@ -433,7 +519,7 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
         )}
       </svg>
       <TooltipLayer tooltip={tooltip} />
-      {!eventCount && <div className="empty-canvas">Your valid SCOT path will appear here.</div>}
+      {!eventCount && !finalLanes.length && <div className="empty-canvas">Your valid SCOT path will appear here.</div>}
     </div>
   );
 }
@@ -653,12 +739,14 @@ function FinishedBraidPreview({ simulation, colors, mirrorFace, theta = 30, tipA
   );
 }
 
-function CordTrack({ cordId, snapshots, events, colors, pointFor, layer, tooltip }: {
+function CordTrack({ cordId, snapshots, events, colors, pointFor, tailBottomY, tailSlant, layer, tooltip }: {
   cordId: string;
   snapshots: Simulation['snapshots'];
   events: Simulation['events'];
   colors: Map<string, string>;
   pointFor: (cordId: string, snapshotIndex: number) => { x: number; y: number };
+  tailBottomY: number;
+  tailSlant: number;
   layer: 'splitter' | 'surface';
   tooltip: Tooltip;
 }) {
@@ -689,9 +777,32 @@ function CordTrack({ cordId, snapshots, events, colors, pointFor, layer, tooltip
         );
       })}
       {layer === 'surface' && (
-        <g {...tooltip.anchorProps(`${cordId} (${cord.colorSymbol}) · starts at lane ${startLane}`)}>
-          <circle className="cord-start" cx={pointFor(cordId, 0).x} cy={pointFor(cordId, 0).y} r="5" fill={color} />
-        </g>
+        <>
+          <g {...tooltip.anchorProps(`${cordId} (${cord.colorSymbol}) · starts at lane ${startLane}`)}>
+            <circle className="cord-start" cx={pointFor(cordId, 0).x} cy={pointFor(cordId, 0).y} r="5" fill={color} />
+          </g>
+          {(() => {
+            const tailStart = pointFor(cordId, snapshots.length - 1);
+            let direction = 0;
+            for (let eventIndex = events.length - 1; eventIndex >= 0; eventIndex -= 1) {
+              const event = events[eventIndex];
+              if (event.splitterId !== cordId && event.splitteeId !== cordId) continue;
+              const before = pointFor(cordId, eventIndex);
+              const after = pointFor(cordId, eventIndex + 1);
+              direction = Math.sign(after.x - before.x);
+              break;
+            }
+            const tailEnd = { x: tailStart.x + direction * tailSlant, y: tailBottomY };
+            const midY = (tailStart.y + tailEnd.y) / 2;
+            const tailD = `M ${tailStart.x} ${tailStart.y} Q ${tailStart.x} ${midY} ${tailEnd.x} ${tailEnd.y}`;
+            return (
+              <g data-cord-id={cordId} data-cord-tail="true">
+                <path className="cord-outline" d={tailD} />
+                <path className="cord-fill" d={tailD} stroke={color} />
+              </g>
+            );
+          })()}
+        </>
       )}
     </g>
   );

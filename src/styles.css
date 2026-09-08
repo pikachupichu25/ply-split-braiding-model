@@ -51,6 +51,12 @@ textarea { display: block; width: 100%; min-height: 236px; resize: vertical; pad
 textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.15), inset 0 3px 0 rgba(0,0,0,.2); }
 .editor-help, .quiet { color: #7f6d58; font-size: 11px; line-height: 1.65; }
 .editor-help { margin: 11px 0 28px; }
+.notation-help-disclosure { margin-bottom: 24px; }
+.notation-help dl { display: grid; gap: 11px; margin: 12px 0 0; padding: 0; }
+.notation-help dt { font-size: 11px; font-weight: 600; color: #a65342; }
+.notation-help dd { margin: 3px 0 0; color: #7e6b57; font-size: 11px; line-height: 1.55; }
+.notation-help pre { margin: 14px 0 0; padding: 12px 14px; border: 1px solid rgba(23,41,61,.3); border-radius: 2px; background: #17293d; color: #f5e9cd; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.6; overflow-x: auto; }
+.notation-help .finished-caption { margin-top: 8px; }
 .palette-panel, .diagnostics { padding-top: 18px; border-top: 1px solid rgba(23,41,61,.16); }
 .diagnostics { margin-top: 24px; }
 .section-kicker { display: flex; justify-content: space-between; margin-bottom: 8px; color: #896f58; }
@@ -74,8 +80,8 @@ textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.1
 .empty-canvas { position: absolute; inset: 0; display: grid; place-items: center; color: #8e7258; font-family: 'Fraunces', Georgia, serif; font-size: 1.35rem; text-align: center; }
 .lane-guide { stroke: rgba(23,41,61,.15); stroke-width: 1; stroke-dasharray: 2 5; }
 .cord-outline, .cord-fill { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.cord-outline { stroke: #17293d; stroke-width: 15; }
-.cord-fill { stroke-width: 9; }
+.cord-outline { stroke: #17293d; stroke-width: 21; }
+.cord-fill { stroke-width: 14; }
 .cord-start { stroke: #17293d; stroke-width: 2; }
 .split-marker circle { fill: #f8f0de; stroke: #17293d; stroke-width: 2; }
 .split-marker path { fill: none; stroke: #17293d; stroke-width: 1.6; stroke-linecap: round; }

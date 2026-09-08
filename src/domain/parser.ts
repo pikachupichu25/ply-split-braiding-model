@@ -91,7 +91,7 @@ export function parsePattern(source: string): ParseResult {
   }
 
   if (rows.length === 0) {
-    diagnostics.push(error(1, 1, 'Add at least one SCOT row instruction.'));
+    diagnostics.push(warning(1, 1, 'Add at least one SCOT row instruction.'));
   }
 
   const numbers = new Set<number>();
@@ -138,4 +138,8 @@ export function parsePattern(source: string): ParseResult {
 
 function error(line: number, column: number, message: string): Diagnostic {
   return { line, column, message, severity: 'error' };
+}
+
+function warning(line: number, column: number, message: string): Diagnostic {
+  return { line, column, message, severity: 'warning' };
 }
