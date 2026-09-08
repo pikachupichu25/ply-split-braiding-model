@@ -32,7 +32,6 @@ export default function App() {
     () => (parsed.pattern ? findFullCycle(parsed.pattern) : undefined),
     [parsed.pattern],
   );
-  const hasOpenRepeat = parsed.pattern?.repeats.some((repeat) => repeat.count === undefined) ?? false;
   const repeats = lengthMode === 'cycle' && fullCycle ? fullCycle.repeats : previewRepeats;
   const simulation = useMemo(
     () => (parsed.pattern ? simulatePattern(parsed.pattern, repeats) : emptySimulation()),
@@ -267,8 +266,8 @@ export default function App() {
               <button className={lengthMode === 'manual' ? 'is-active' : ''} onClick={() => setLengthMode('manual')}>Manual</button>
             </div>
             <label className="repeat-control">
-              <input aria-label="Preview repeats" type="range" min="1" max="16" value={previewRepeats} disabled={!hasOpenRepeat || (lengthMode === 'cycle' && Boolean(fullCycle))} onChange={(event) => setPreviewRepeats(Number(event.target.value))} />
-              <span>{describeLength(lengthMode, repeats, fullCycle, parsed.pattern?.repeats.length ?? 0, hasOpenRepeat, simulation.totalRows)}</span>
+              <input aria-label="Preview repeats" type="range" min="1" max="16" value={previewRepeats} disabled={lengthMode === 'cycle' && Boolean(fullCycle)} onChange={(event) => setPreviewRepeats(Number(event.target.value))} />
+              <span>{describeLength(lengthMode, repeats, fullCycle, simulation.totalRows)}</span>
             </label>
           </div>
           {view !== 'braid' && <>
@@ -734,16 +733,11 @@ function describeLength(
   mode: 'cycle' | 'manual',
   repeats: number,
   fullCycle: { repeats: number; rows: number } | undefined,
-  repeatSections: number,
-  hasOpenRepeat: boolean,
   totalRows: number,
 ): string {
-  if (repeatSections > 0 && !hasOpenRepeat) {
-    return `${repeatSections} fixed section${repeatSections === 1 ? '' : 's'} · ${totalRows} rows`;
-  }
-  if (mode === 'manual') return `${repeats} repeats`;
+  if (mode === 'manual') return `${repeats} repeat${repeats === 1 ? '' : 's'} · ${totalRows} rows`;
   if (fullCycle) return `${fullCycle.repeats} repeats · ${fullCycle.rows} rows to close`;
-  return `${repeats} repeats · no closure found`;
+  return `${repeats} repeats · ${totalRows} rows · no closure found`;
 }
 
 function describeCordSegment(cordId: string, colorSymbol: string, event: SplitEvent | undefined): string {

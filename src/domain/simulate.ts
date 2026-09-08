@@ -70,6 +70,17 @@ export function simulatePattern(pattern: PatternAst, previewRepeats: number): Si
 }
 
 function expandRows(pattern: PatternAst, previewRepeats: number): RowInstruction[] {
+  const written = expandRepeatSections(pattern, previewRepeats);
+  if (pattern.repeats.some((repeat) => repeat.count === undefined)) return written;
+
+  // Nothing inside the pattern is open-ended, so the preview length works the
+  // whole written pattern that many times over.
+  const expanded: RowInstruction[] = [];
+  for (let iteration = 0; iteration < previewRepeats; iteration += 1) expanded.push(...written);
+  return expanded;
+}
+
+function expandRepeatSections(pattern: PatternAst, previewRepeats: number): RowInstruction[] {
   if (!pattern.repeats.length) return pattern.rows;
 
   const ranges = pattern.repeats.map((repeat) => ({

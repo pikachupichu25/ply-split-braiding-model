@@ -6,10 +6,9 @@ export type FullCycle = { repeats: number; rows: number };
 const searchLimit = 64;
 
 export function findFullCycle(pattern: PatternAst): FullCycle | undefined {
-  const expansionVaries = pattern.repeats.some((repeat) => repeat.count === undefined);
-  const limit = expansionVaries ? searchLimit : 1;
-
-  for (let repeats = 1; repeats <= limit; repeats += 1) {
+  // Every pattern expands with the repeat count: an open section repeats that
+  // many times, and a pattern without one is worked through that many times.
+  for (let repeats = 1; repeats <= searchLimit; repeats += 1) {
     const simulation = simulatePattern(pattern, repeats);
     if (simulation.diagnostics.some((diagnostic) => diagnostic.severity === 'error')) return undefined;
     if (returnsToStart(simulation)) return { repeats, rows: simulation.totalRows };
