@@ -79,9 +79,13 @@ textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.1
 .cord-start { stroke: #17293d; stroke-width: 2; }
 .split-marker circle { fill: #f8f0de; stroke: #17293d; stroke-width: 2; }
 .split-marker path { fill: none; stroke: #17293d; stroke-width: 1.6; stroke-linecap: round; }
+.split-marker, .finished-split-cell, .cord-track g[data-tooltip-anchor] { cursor: help; }
 .diagram-frame--braid .lane-guide { opacity: 0; }
 .diagram-frame--braid .split-marker circle { fill: none; }
 .diagram-frame--braid .split-marker path { opacity: 0; }
+/* An invisible disc so a fingertip can land on the split marker. */
+.split-marker .split-marker-hit,
+.diagram-frame--braid .split-marker .split-marker-hit { fill: transparent; stroke: none; }
 .lane-legend-rule { stroke: rgba(23,41,61,.22); stroke-width: 1; }
 .lane-legend-position { fill: #17293d; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
 .lane-legend-cord { fill: #786b5b; font-size: 10px; letter-spacing: .06em; }
@@ -113,6 +117,28 @@ textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.1
 .rule-tally b { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
 .rule-tally .quiet { color: #8a7a67; }
 
+
+/* Tooltips are drawn rather than left to the browser, so a tap opens them too. */
+.svg-tooltip {
+  position: absolute;
+  z-index: 5;
+  max-width: min(260px, 78vw);
+  padding: 7px 10px;
+  border: 1px solid rgba(211,164,72,.55);
+  border-radius: 3px;
+  background: #17293d;
+  color: #f5e9cd;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+  box-shadow: 0 8px 22px rgba(6,15,26,.36);
+  pointer-events: none;
+}
+.svg-tooltip--above { transform: translate(-50%, -100%); }
+.svg-tooltip--below { transform: translate(-50%, 0); }
+@media (hover: none) {
+  .svg-tooltip { font-size: 12px; padding: 9px 12px; }
+}
 
 .control-deck { display: grid; grid-template-columns: auto 1fr auto; gap: 28px; align-items: center; max-width: 1500px; margin: 18px auto 0; padding: 0 8px; }
 .preview-controls { display: flex; flex-wrap: wrap; gap: 24px; }

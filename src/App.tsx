@@ -8,6 +8,8 @@ import { buildFinishedSurfaces } from './domain/finishedSurface';
 import { parsePattern } from './domain/parser';
 import { simulatePattern } from './domain/simulate';
 import type { Face, Simulation, SplitEvent } from './domain/types';
+import { TooltipLayer, useTooltip } from './ui/tooltip';
+import type { Tooltip } from './ui/tooltip';
 
 const palette = ['#d76b52', '#77b6c9', '#d3a448', '#6f8f65', '#a47aa3', '#dd8f45'];
 const savedPatternKey = 'scot-braid-studio-pattern';
@@ -314,6 +316,7 @@ type BraidDiagramProps = DiagramProps & {
 };
 
 function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hoveredLane, onLaneClick, onLaneHover }: BraidDiagramProps) {
+  const tooltip = useTooltip();
   const laneCount = simulation.snapshots[0]?.lanes.length ?? 8;
   const eventCount = simulation.events.length;
   const laneGap = 82;
@@ -337,7 +340,7 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
     : new Set<number>();
 
   return (
-    <div className="diagram-frame diagram-frame--braid">
+    <div className="diagram-frame diagram-frame--braid" ref={tooltip.containerRef}>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="diagram-title diagram-description">
         <title id="diagram-title">SCOT braid course trace</title>
         <desc id="diagram-description">A lane diagram of cords moving through the whole SCOT splitting sequence. In the braid view, each splitter remains visible behind its splittee at their crossing.</desc>
@@ -359,6 +362,7 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
             colors={colors}
             pointFor={pointFor}
             layer="splitter"
+            tooltip={tooltip}
           />
         ))}
         {cordIds.map((cordId) => (
@@ -370,6 +374,7 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
             colors={colors}
             pointFor={pointFor}
             layer="surface"
+            tooltip={tooltip}
           />
         ))}
         {simulation.events.map((event, eventIndex) => {
@@ -378,11 +383,15 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
           const x = (before.x + after.x) / 2;
           const y = (before.y + after.y) / 2;
           return (
-            <g key={`event-${event.eventIndex}`} className="split-marker">
+            <g
+              key={`event-${event.eventIndex}`}
+              className="split-marker"
+              {...tooltip.anchorProps(`e${event.eventIndex} · ${describeEvent(event)} · lane ${event.fromLane} → ${event.toLane}`)}
+            >
               <circle cx={x} cy={y} r="8" />
               <path d={`M ${x - 5} ${y - 2} Q ${x} ${y - 7} ${x + 5} ${y - 2}`} />
               <path d={`M ${x - 5} ${y + 2} Q ${x} ${y + 7} ${x + 5} ${y + 2}`} />
-              <title>{`e${event.eventIndex} · ${describeEvent(event)} · lane ${event.fromLane} → ${event.toLane}`}</title>
+              <circle className="split-marker-hit" cx={x} cy={y} r="14" />
             </g>
           );
         })}
@@ -403,6 +412,7 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
                   data-cord-id={cord.id}
                   role="button"
                   tabIndex={0}
+                  {...tooltip.anchorProps(`Position ${lane} · ${cord.id}${isArmed ? ' · armed as splitter' : ''}`)}
                   onClick={() => onLaneClick(lane)}
                   onMouseEnter={() => onLaneHover(lane)}
                   onMouseLeave={() => onLaneHover(null)}
@@ -417,13 +427,13 @@ function BraidDiagram({ simulation, colors, mirrorFace, pendingSplitter, hovered
                   <text className="lane-legend-position" x={x} y={labelY} textAnchor="middle">{lane}</text>
                   <circle className="lane-legend-swatch" cx={x - 18} cy={labelY + 12} r="4.5" fill={color} />
                   <text className="lane-legend-cord" x={x - 10} y={labelY + 16}>{cord.id}</text>
-                  <title>{`Position ${lane} · ${cord.id}${isArmed ? ' · armed as splitter' : ''}`}</title>
                 </g>
               );
             })}
           </g>
         )}
       </svg>
+      <TooltipLayer tooltip={tooltip} />
       {!eventCount && <div className="empty-canvas">Your valid SCOT path will appear here.</div>}
     </div>
   );
@@ -437,13 +447,14 @@ type FinishedProps = Pick<DiagramProps, 'simulation' | 'colors' | 'mirrorFace'> 
 };
 
 function FinishedV1Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1 }: FinishedProps) {
+  const tooltip = useTooltip();
   const layout = useMemo(() => buildFinishedLayout(simulation, { theta, tipAngle }), [simulation, theta, tipAngle]);
   const startCords = new Map((simulation.snapshots[0]?.lanes ?? []).map((cord) => [cord.id, cord]));
   const colorFor = (cordId: string) => colors.get(startCords.get(cordId)?.colorSymbol ?? '') ?? '#d3a448';
   const faceTransform = mirrorFace === 'back' ? `translate(${layout.width} 0) scale(-1 1)` : undefined;
 
   return (
-    <div className="finished-preview finished-preview--v1">
+    <div className="finished-preview finished-preview--v1" ref={tooltip.containerRef}>
       <svg viewBox={`0 0 ${layout.width} ${layout.height}`} width={layout.width * widthScale} height={layout.height * widthScale} role="img" aria-labelledby="finished-v1-title finished-v1-description">
         <title id="finished-v1-title">Finished SCOT parallelogram chart, version one</title>
         <desc id="finished-v1-description">One sharp splittee-coloured parallelogram for every split event. In each column, consecutive cells with the same lean touch edge to edge, and opposite leans can partially overlap or leave open space.</desc>
@@ -460,19 +471,20 @@ function FinishedV1Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
                 data-event-index={cell.event.eventIndex}
                 data-column={cell.column}
                 data-direction={displayDirection}
-              >
-                <title>{`e${cell.event.eventIndex} · ${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`}</title>
-              </polygon>
+                {...tooltip.anchorProps(`e${cell.event.eventIndex} · ${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`)}
+              />
             );
           })}
         </g>
       </svg>
+      <TooltipLayer tooltip={tooltip} />
       {!simulation.events.length && <div className="empty-canvas">Your finished parallelogram preview will appear here.</div>}
     </div>
   );
 }
 
 function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1, surfaceOn = true }: FinishedProps) {
+  const tooltip = useTooltip();
   const layout = useMemo(
     () => buildFinishedLayoutV2(simulation, { theta, tipAngle }),
     [simulation, theta, tipAngle],
@@ -488,7 +500,7 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
 
   return (
     <>
-      <div className="finished-preview finished-preview--v2">
+      <div className="finished-preview finished-preview--v2" ref={tooltip.containerRef}>
         <svg viewBox={`0 0 ${layout.width} ${layout.height}`} width={layout.width * widthScale} height={layout.height * widthScale} role="img" aria-labelledby="finished-v2-title finished-v2-description">
           <title id="finished-v2-title">Finished SCOT parallelogram chart, version two</title>
           <desc id="finished-v2-description">One splittee-coloured parallelogram per split event, placed by the splitter’s course, the cord’s full-edge join and the half-side role change, in that order of authority. No column packing is applied, so cells in a gap column sit wherever their own runs leave them. Where a cord changes role across a shared boundary, the two diagonals extend to their intersection in the neighbouring column and the extra triangle is filled with the colour of the ribbon crossing the seam; the placed cells keep their shapes.</desc>
@@ -509,9 +521,8 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
                   data-role-transition={transitions.map(transition => transition.kind).join(' ') || undefined}
                   data-emerges-from-event={emergence?.hostEventIndex}
                   data-departs-from-event={departure?.hostEventIndex}
-                >
-                  <title>{`e${cell.event.eventIndex} · ${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`}</title>
-                </path>
+                  {...tooltip.anchorProps(`e${cell.event.eventIndex} · ${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`)}
+                />
               );
             })}
             {/* Section 7.5.2: every placed cell is drawn before any triangle,
@@ -529,6 +540,7 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
             </g>
           </g>
         </svg>
+        <TooltipLayer tooltip={tooltip} />
         {!simulation.events.length && <div className="empty-canvas">Your finished v2 preview will appear here.</div>}
       </div>
       <details className="preview-disclosure preview-disclosure--audit">
@@ -568,6 +580,7 @@ function summarizeRules(links: FinishedLink[]) {
 }
 
 function FinishedBraidPreview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1, surfaceOn = true }: FinishedProps) {
+  const tooltip = useTooltip();
   const layout = useMemo(
     () => buildFinishedLayout(simulation, { theta, tipAngle }),
     [simulation, theta, tipAngle],
@@ -588,7 +601,7 @@ function FinishedBraidPreview({ simulation, colors, mirrorFace, theta = 30, tipA
     : undefined;
 
   return (
-    <div className="finished-preview">
+    <div className="finished-preview" ref={tooltip.containerRef}>
       <svg
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         width={layout.width * widthScale}
@@ -617,9 +630,8 @@ function FinishedBraidPreview({ simulation, colors, mirrorFace, theta = 30, tipA
                   data-role-transition={transitions.map(t => t.kind).join(' ') || undefined}
                   data-emerges-from-event={emergence?.hostEventIndex}
                   data-departs-from-event={departure?.hostEventIndex}
-                >
-                  <title>{`e${cell.event.eventIndex} · ${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`}</title>
-                </path>
+                  {...tooltip.anchorProps(`e${cell.event.eventIndex} · ${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`)}
+                />
               </g>
             );
           })}
@@ -636,18 +648,20 @@ function FinishedBraidPreview({ simulation, colors, mirrorFace, theta = 30, tipA
           </g>
         </g>
       </svg>
+      <TooltipLayer tooltip={tooltip} />
       {!simulation.events.length && <div className="empty-canvas">Your finished craft preview will appear here.</div>}
     </div>
   );
 }
 
-function CordTrack({ cordId, snapshots, events, colors, pointFor, layer }: {
+function CordTrack({ cordId, snapshots, events, colors, pointFor, layer, tooltip }: {
   cordId: string;
   snapshots: Simulation['snapshots'];
   events: Simulation['events'];
   colors: Map<string, string>;
   pointFor: (cordId: string, snapshotIndex: number) => { x: number; y: number };
   layer: 'splitter' | 'surface';
+  tooltip: Tooltip;
 }) {
   const cord = snapshots[0]?.lanes.find((item) => item.id === cordId);
   if (!cord) return null;
@@ -664,17 +678,20 @@ function CordTrack({ cordId, snapshots, events, colors, pointFor, layer }: {
         const midY = (start.y + end.y) / 2;
         const d = `M ${start.x} ${start.y} Q ${start.x} ${midY} ${end.x} ${end.y}`;
         return (
-          <g key={`${cordId}-${eventIndex}`} data-cord-id={cordId} data-event-index={event?.eventIndex}>
+          <g
+            key={`${cordId}-${eventIndex}`}
+            data-cord-id={cordId}
+            data-event-index={event?.eventIndex}
+            {...tooltip.anchorProps(describeCordSegment(cordId, cord.colorSymbol, event))}
+          >
             <path className="cord-outline" d={d} />
             <path className="cord-fill" d={d} stroke={color} />
-            <title>{describeCordSegment(cordId, cord.colorSymbol, event)}</title>
           </g>
         );
       })}
       {layer === 'surface' && (
-        <g>
+        <g {...tooltip.anchorProps(`${cordId} (${cord.colorSymbol}) · starts at lane ${startLane}`)}>
           <circle className="cord-start" cx={pointFor(cordId, 0).x} cy={pointFor(cordId, 0).y} r="5" fill={color} />
-          <title>{`${cordId} (${cord.colorSymbol}) · starts at lane ${startLane}`}</title>
         </g>
       )}
     </g>
