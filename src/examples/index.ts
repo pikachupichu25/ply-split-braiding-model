@@ -5,6 +5,7 @@ import { doubleChevron24Pattern } from './doubleChevron24';
 import { wayuuFajon20Pattern } from './wayuuFajon20';
 import { arrowPattern } from './arrow';
 import { eyes36Pattern } from './eyes36';
+import { eyeletsPattern } from './eyelets';
 
 export type SamplePattern = {
   id: string;
@@ -55,6 +56,12 @@ export const samplePatterns: SamplePattern[] = [
     name: 'Eyes (36-cord)',
     summary: 'Two eighteen-cord eyes side by side, each a concentric A-B-C-D-E diamond converging on its own centre. Closes after 9 repeats, 37 rows.',
     source: eyes36Pattern,
+  },
+  {
+    id: 'eyelets',
+    name: 'Eyelets',
+    summary: 'Eyelets',
+    source: eyeletsPattern,
   }
 ];
 
