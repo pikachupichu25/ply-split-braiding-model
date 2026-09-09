@@ -846,7 +846,7 @@ function CordTrack({ cordId, snapshots, events, colors, pointFor, tailBottomY, t
             }
             const tailEnd = { x: tailStart.x + direction * tailSlant, y: tailBottomY };
             const midY = (tailStart.y + tailEnd.y) / 2;
-            const tailD = `M ${tailStart.x} ${tailStart.y} Q ${tailStart.x} ${midY} ${tailEnd.x} ${tailEnd.y}`;
+            const tailD = `M ${tailStart.x} ${tailStart.y} Q ${tailEnd.x} ${midY} ${tailEnd.x} ${tailEnd.y}`;
             return (
               <g data-cord-id={cordId} data-cord-tail="true">
                 <path className="cord-outline" d={tailD} />
