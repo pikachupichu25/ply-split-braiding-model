@@ -7,11 +7,19 @@ import { arrowPattern } from './arrow';
 import { eyes36Pattern } from './eyes36';
 import { eyeletsPattern } from './eyelets';
 
+export type SamplePatternImage = {
+  /** Path under `public/`, e.g. `/expected-layouts/eyes.webp`. */
+  src: string;
+  alt: string;
+};
+
 export type SamplePattern = {
   id: string;
   name: string;
   summary: string;
   source: string;
+  /** Photo of the real braid, when one exists. Enables the photo comparison. */
+  image?: SamplePatternImage;
 };
 
 export const samplePatterns: SamplePattern[] = [
@@ -44,6 +52,10 @@ export const samplePatterns: SamplePattern[] = [
     name: 'Eyes',
     summary: 'Twenty cords in a Wayuu-inspired A-C sequence, worked as a four-row repeat four times (16 rows total).',
     source: wayuuFajon20Pattern,
+    image: {
+      src: '/expected-layouts/eyes.webp',
+      alt: 'Real Eyes braid: staggered blue and white eyes with dark centres and a dark surrounding field',
+    },
   },
   {
     id: 'arrow',

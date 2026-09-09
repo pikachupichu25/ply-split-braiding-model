@@ -11,6 +11,7 @@ import { simulatePattern } from './domain/simulate';
 import type { Face, Simulation, SplitEvent } from './domain/types';
 import { TooltipLayer, useTooltip } from './ui/tooltip';
 import type { Tooltip } from './ui/tooltip';
+import CordNetworkPreview from './CordNetworkPreview';
 
 const palette = ['#d76b52', '#77b6c9', '#d3a448', '#6f8f65', '#a47aa3', '#dd8f45'];
 const savedPatternKey = 'scot-braid-studio-pattern';
@@ -19,7 +20,7 @@ export default function App() {
   const [source, setSource] = useState(() => localStorage.getItem(savedPatternKey) ?? defaultSample.source);
   const [previewRepeats, setPreviewRepeats] = useState(4);
   const [lengthMode, setLengthMode] = useState<'cycle' | 'manual'>('cycle');
-  const [view, setView] = useState<'finished-v1' | 'finished-v2' | 'finished-dev' | 'braid'>('finished-v2');
+  const [view, setView] = useState<'finished-v1' | 'finished-v2' | 'finished-dev' | 'braid' | 'cord-network'>(() => new URLSearchParams(window.location.search).get('view') === 'cord-network' ? 'cord-network' : 'finished-v2');
   const [mirrorFace, setMirrorFace] = useState<Face>('front');
   const [finishedAngle, setFinishedAngle] = useState(30);
   const [finishedTip, setFinishedTip] = useState(30);
@@ -231,6 +232,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
               <div className="toggle-group">
                 {/* <button className={view === 'finished-v1' ? 'is-active' : ''} onClick={() => setView('finished-v1')}>Finished v1</button> */}
                 <button className={view === 'finished-v2' ? 'is-active' : ''} onClick={() => setView('finished-v2')}>Finished v2</button>
+                <button className={view === 'cord-network' ? 'is-active' : ''} onClick={() => setView('cord-network')}>Cord network</button>
                 {/* <button className={view === 'finished-dev' ? 'is-active' : ''} onClick={() => setView('finished-dev')}>Finished (dev)</button> */}
                 <button className={view === 'braid' ? 'is-active' : ''} onClick={() => setView('braid')}>Braid</button>
               </div>
@@ -254,7 +256,8 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
           </div>
 
           <div className="canvas-meta">
-            <span>{view === 'finished-v1'
+            <span>{view === 'cord-network' ? `continuous cords · ${mirrorFace} face · experimental`
+              : view === 'finished-v1'
               ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v1`
               : view === 'finished-v2'
                 ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v2 · chronological R1–R4`
@@ -274,7 +277,9 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
                   : `Splitter armed at lane ${pendingSplitter}. Click the last splittee lane to add the step, or press Esc to cancel.`}
             </p>
           )}
-          {view === 'finished-v1' ? (
+          {view === 'cord-network' ? (
+            <CordNetworkPreview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} referenceName={activeSample?.name ?? 'this pattern'} referenceImage={activeSample?.image} />
+          ) : view === 'finished-v1' ? (
             <FinishedV1Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
           ) : view === 'finished-v2' ? (
             <FinishedV2Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} surfaceOn={finishedSurfaceOn} layoutName={activeSample?.name ?? 'Edited SCOT pattern'} showEventIds={showEventIds} />
@@ -294,7 +299,9 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
 
           <details className="preview-disclosure">
             <summary>About this view</summary>
-            {view === 'finished-v1' ? (
+            {view === 'cord-network' ? (
+              <p className="finished-caption">This independent model connects every visit along each physical cord, fits the network into a strip, and relaxes the segment spacing. Curved edge returns preserve repeated meetings of the same cords. Surface regions come from the embedded network and take the colour of the cord being split. Photo comparison is available for the Eyes sample; dimensions and physical ply geometry remain experimental.</p>
+            ) : view === 'finished-v1' ? (
               <p className="finished-caption">Finished v1 shows one sharp splittee-coloured cell per split. Cells with the same lean touch edge to edge; opposite leans can partially overlap or leave open space.</p>
             ) : view === 'finished-v2' ? (
               <p className="finished-caption">Finished v2 places cells chronologically from top to bottom in each column and never moves one that is already placed. R1 proposes the splitter’s course, R2 proposes the cord’s full-edge join, and R3 pushes only the new cell down when it would overlap a same-lean cell in its column. Opposite leans may overlap or leave space. R4’s half-side role change is used when no R1–R3 constraint applies, while top-to-bottom ordering remains enforced.</p>
@@ -320,7 +327,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
               <span>{describeLength(lengthMode, repeats, fullCycle, simulation.totalRows)}</span>
             </label>
           </div>
-          {view !== 'braid' && <>
+          {view !== 'braid' && view !== 'cord-network' && <>
             <div>
               <p className="eyebrow">Cord slant</p>
               <label className="angle-control">
