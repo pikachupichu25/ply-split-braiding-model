@@ -1,4 +1,4 @@
-// Measures the v2 layout (R1 + R2 + R4, no column packing) against the
+// Measures the chronological v2 layout (R1 + R2 + R3 + fallback R4) against the
 // placement rules, and against v1, for every sample at several angles.
 // Run: node --experimental-strip-types scripts/compare-finished-v2.mjs
 import { parsePattern } from '../src/domain/parser.ts';
@@ -33,8 +33,7 @@ function audit(cells, cellSide, crossGapDrop) {
     R2: { total: 0, met: 0, worst: 0 },
     R4return: { total: 0, met: 0, worst: 0 },
     R4departure: { total: 0, met: 0, worst: 0 },
-    R3contact: { total: 0, met: 0, worst: 0 },
-    R3overlap: { total: 0, met: 0, worst: 0 },
+    R3nonOverlap: { total: 0, met: 0, worst: 0 },
   };
   const check = (key, residual) => {
     score[key].total += 1;
@@ -74,21 +73,17 @@ function audit(cells, cellSide, crossGapDrop) {
       check('R4departure', topAt(cell, x) - topAt(leaving, x) - cellSide / 2);
     }
 
-    // What dropping R3 costs: consecutive same-lean contact, and same-lean
-    // interior overlap across an intervening opposite lean.
+    // R3 is a minimum separation from the previous cell of the same lean,
+    // including when opposite-lean events intervene. Positive gaps are valid.
     const above = lastInColumn.get(cell.column);
-    if (above && leansRight(above) === leansRight(cell)) {
-      const xs = [...new Set(cell.points.map(p => p.x))];
-      check('R3contact', Math.max(...xs.map(x => topAt(cell, x) - bottomAt(above, x))));
-    }
     const key = `${cell.column}:${leansRight(cell)}`;
     const sameLean = lastByLean.get(key);
-    if (sameLean && sameLean !== above) {
+    if (sameLean) {
       const xs = [...new Set(cell.points.map(p => p.x))];
       const overlap = Math.min(...xs.map(x => topAt(cell, x) - bottomAt(sameLean, x)));
-      score.R3overlap.total += 1;
-      if (overlap > -1e-4) score.R3overlap.met += 1;
-      score.R3overlap.worst = Math.max(score.R3overlap.worst, Math.max(0, -overlap));
+      score.R3nonOverlap.total += 1;
+      if (overlap > -1e-4) score.R3nonOverlap.met += 1;
+      score.R3nonOverlap.worst = Math.max(score.R3nonOverlap.worst, Math.max(0, -overlap));
     }
     lastByLean.set(key, cell);
     lastInColumn.set(cell.column, cell);

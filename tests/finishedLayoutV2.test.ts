@@ -34,79 +34,145 @@ const edgeAt = (cell: Cell, x: number) =>
 const topAt = (cell: Cell, x: number) => Math.min(...edgeAt(cell, x));
 const bottomAt = (cell: Cell, x: number) => Math.max(...edgeAt(cell, x));
 
-/**
- * Reads the rules straight off the polygons, independently of the links the
- * layout reports, and returns one residual per relation each rule asks for.
- */
-function residuals(layout: FinishedLayoutV2) {
-  const found = { R1: [] as number[], R2: [] as number[], return: [] as number[], departure: [] as number[] };
-  const lastVisible = new Map<string, Cell>();
-  const lastSplit = new Map<string, Cell>();
-
-  for (const [index, cell] of layout.cells.entries()) {
-    const event = cell.event;
-    const previous = layout.cells[index - 1];
-    if (previous
-      && previous.event.rowInstance === event.rowInstance
-      && previous.event.splitterId === event.splitterId) {
-      found.R1.push(Math.hypot(cell.points[0].x - previous.points[2].x,
-        cell.points[0].y - previous.points[2].y));
-    }
-
-    const continuing = lastVisible.get(event.splitteeId);
-    if (continuing
-      && continuing.event.fromLane === event.toLane
-      && Math.abs(continuing.column - cell.column) === 1) {
-      const x = cell.points[2].x;
-      found.R2.push(Math.max(Math.abs(topAt(cell, x) - topAt(continuing, x)),
-        Math.abs(bottomAt(cell, x) - bottomAt(continuing, x))));
-    } else {
-      const host = lastSplit.get(event.splitteeId);
-      if (host && host.event.toLane === event.toLane
-        && Math.abs(host.column - cell.column) === 1) {
-        const x = cell.points[2].x;
-        found.return.push(topAt(cell, x) - topAt(host, x) - layout.cellSide / 2);
-      }
-    }
-
-    const leaving = lastVisible.get(event.splitterId);
-    if (leaving
-      && leaving.event.fromLane === event.fromLane
-      && Math.abs(leaving.column - cell.column) === 1) {
-      const x = cell.points[0].x;
-      found.departure.push(topAt(cell, x) - topAt(leaving, x) - layout.cellSide / 2);
-    }
-
-    lastVisible.set(event.splitteeId, cell);
-    lastVisible.delete(event.splitterId);
-    lastSplit.set(event.splitterId, cell);
-    lastSplit.delete(event.splitteeId);
-  }
-  return found;
-}
-
-test('v2 keeps every cord join and every role change exact, in all samples', () => {
+test('v2 keeps same-lean cells in each column from overlapping', () => {
   for (const [name, source] of samples) {
     const simulation = simulate(source);
     for (const [theta, tipAngle] of angles) {
       const layout = buildFinishedLayoutV2(simulation, { theta, tipAngle, columnWidth: 100 });
-      const measured = residuals(layout);
-      assert.ok(measured.R2.length > 0, `${name} should have cord joins to keep`);
-      for (const [rule, values] of Object.entries(measured)) {
-        if (rule === 'R1') continue;
-        const worst = Math.max(0, ...values.map(Math.abs));
-        assert.ok(worst < 0.0001,
-          `${name} at ${theta}/${tipAngle}: ${rule} misses by ${worst}`);
+      const lastByLean = new Map<string, Cell>();
+      for (const cell of layout.cells) {
+        const leansRight = cell.event.toLane > cell.event.fromLane;
+        const key = `${cell.column}:${leansRight}`;
+        const above = lastByLean.get(key);
+        if (above) {
+          const xs = [...new Set(cell.points.map(point => point.x))];
+          for (const x of xs) {
+            assert.ok(topAt(cell, x) >= bottomAt(above, x) - 0.0001,
+              `${name} at ${theta}/${tipAngle}: event ${cell.event.eventIndex} overlaps `
+              + `same-lean event ${above.event.eventIndex} in column ${cell.column}`);
+          }
+        }
+        lastByLean.set(key, cell);
       }
-      // The reported links agree with the geometry: nothing conflicted for
-      // the two exact rules, and R1's own conflicts are the action bending.
+      assert.ok(layout.links.some(link => link.rule === 'R3'), `${name} exercises R3`);
       assert.equal(layout.links.filter(link =>
-        link.rule !== 'R1' && link.status === 'conflicted').length, 0);
-      assert.equal(layout.links.filter(link => link.rule === 'R1'
-        && link.status === 'conflicted').length,
-        measured.R1.filter(residual => residual > 0.0001).length);
+        link.rule === 'R3' && link.status === 'conflicted').length, 0);
     }
   }
+});
+
+test('v2 places each column from top to bottom', () => {
+  for (const [name, source] of samples) {
+    const layout = buildFinishedLayoutV2(simulate(source));
+    const lastY = new Map<number, number>();
+    for (const cell of layout.cells) {
+      const top = Math.min(...cell.points.map(point => point.y));
+      assert.ok(top >= (lastY.get(cell.column) ?? -Infinity) - 0.0001,
+        `${name}: event ${cell.event.eventIndex} moved upward in column ${cell.column}`);
+      lastY.set(cell.column, top);
+    }
+    assert.equal(layout.links.filter(link =>
+      link.rule === 'R0' && link.status === 'conflicted').length, 0);
+  }
+});
+
+test('R3 keeps valid same-lean gaps and leaves opposite-lean spacing flexible', () => {
+  const layout = buildFinishedLayoutV2(simulate(wayuuFajon20Pattern));
+  assert.ok(layout.links.some(link => link.rule === 'R3' && link.residual > 0.0001),
+    'R3 must not close an existing same-lean gap');
+
+  const lastInColumn = new Map<number, Cell>();
+  let overlappingBoundaries = 0;
+  let openBoundaries = 0;
+  for (const cell of layout.cells) {
+    const previous = lastInColumn.get(cell.column);
+    if (previous
+      && (previous.event.toLane > previous.event.fromLane)
+        !== (cell.event.toLane > cell.event.fromLane)) {
+      for (const x of [...new Set(cell.points.map(point => point.x))]) {
+        const previousEdge = edgeAt(previous, x);
+        const currentEdge = edgeAt(cell, x);
+        const overlap = Math.min(Math.max(...previousEdge), Math.max(...currentEdge))
+          - Math.max(Math.min(...previousEdge), Math.min(...currentEdge));
+        if (overlap > 0.0001) overlappingBoundaries += 1;
+        if (Math.min(...currentEdge) - Math.max(...previousEdge) > 0.0001) openBoundaries += 1;
+      }
+    }
+    lastInColumn.set(cell.column, cell);
+  }
+  assert.ok(overlappingBoundaries > 0, 'opposite leans can overlap');
+  assert.ok(openBoundaries > 0, 'opposite leans can leave extra space');
+});
+
+test('v2 never moves a cell after it has been placed', () => {
+  const simulation = simulate(wayuuFajon20Pattern);
+  const complete = buildFinishedLayoutV2(simulation, { columnWidth: 100 });
+  for (const count of [1, 2, 5, 16, 40, 100, 250, 500, simulation.events.length]) {
+    const prefix = buildFinishedLayoutV2({
+      ...simulation,
+      events: simulation.events.slice(0, count),
+    }, { columnWidth: 100 });
+    assert.deepEqual(prefix.cells, complete.cells.slice(0, count),
+      `the first ${count} cells retain their original coordinates`);
+  }
+});
+
+test('R4 is used only when the current cell has no R1-R3 constraint', () => {
+  for (const [name, source] of samples) {
+    const layout = buildFinishedLayoutV2(simulate(source));
+    const byTarget = new Map<number, FinishedLayoutV2['links']>();
+    for (const link of layout.links) {
+      const target = byTarget.get(link.to) ?? [];
+      target.push(link);
+      byTarget.set(link.to, target);
+    }
+
+    for (const [target, links] of byTarget) {
+      const roleChanges = links.filter(link => link.rule === 'R4');
+      if (!roleChanges.length) continue;
+      const other = links.some(link => link.rule === 'R1'
+        || link.rule === 'R2' || link.rule === 'R3');
+      const anchored = roleChanges.filter(link => link.status === 'anchored');
+      if (other) {
+        assert.equal(anchored.length, 0, `${name} event ${target}: R4 must yield`);
+      }
+    }
+  }
+});
+
+test('Eyes event 87 uses R4 instead of completely overlapping event 70', () => {
+  const layout = buildFinishedLayoutV2(simulate(wayuuFajon20Pattern), {
+    columnWidth: 100,
+    padding: 0,
+  });
+  const earlier = layout.cells[70];
+  const current = layout.cells[87];
+  assert.equal(earlier.column, 9);
+  assert.equal(current.column, 9);
+  assert.notDeepEqual(current.points.map(point => point.y), earlier.points.map(point => point.y));
+  assert.ok(layout.links.some(link => link.to === 87
+    && link.rule === 'R4' && link.kind === 'departure' && link.status === 'anchored'));
+});
+
+test('Eyes events 65 and 82 keep C03 continuous through a same-gap reversal', () => {
+  const layout = buildFinishedLayoutV2(simulate(wayuuFajon20Pattern), {
+    columnWidth: 100,
+    padding: 0,
+  });
+  const earlier = layout.cells[65];
+  const current = layout.cells[82];
+  assert.equal(earlier.event.splitteeId, 'C03');
+  assert.equal(current.event.splitteeId, 'C03');
+  assert.equal(earlier.column, current.column);
+  assert.notDeepEqual(current.points.map(point => point.y), earlier.points.map(point => point.y));
+
+  const boundaryX = current.points[2].x;
+  assert.deepEqual(
+    edgeAt(current, boundaryX).sort((a, b) => a - b),
+    edgeAt(earlier, boundaryX).sort((a, b) => a - b),
+  );
+  assert.ok(layout.links.some(link => link.from === 65 && link.to === 82
+    && link.rule === 'R2' && link.kind === 'continuation' && link.status === 'anchored'));
 });
 
 test('v2 asserts one cell per event and stays finite at the angle limits', () => {
@@ -149,35 +215,11 @@ test('v2 is deterministic, leaves the simulation alone, and mirrors exactly', ()
   }
 });
 
-test('v2 ties the whole surface into one body, with no unplaced run', () => {
-  for (const [name, source] of samples) {
-    const layout = buildFinishedLayoutV2(simulate(source));
-    assert.equal(layout.runs, 1, `${name} should need no baseline fallback`);
-  }
+test('v2 reports no groups for an empty simulation', () => {
   assert.deepEqual(buildFinishedLayoutV2(
     { events: [], snapshots: [], diagnostics: [], totalRows: 0 }).cells, []);
-});
-
-test('rule authority is the layout’s choice, not an accident of event order', () => {
-  // braid16 is the sample where the two exact anchors and the action scaffold
-  // cannot all hold: R4 first keeps every role change, R1 first keeps every
-  // corner contact instead. Both orders keep all of R2.
-  const simulation = simulate(braid16Pattern);
-  const held = (layout: FinishedLayoutV2, rule: 'R1' | 'R2' | 'R4') => {
-    const links = layout.links.filter(link => link.rule === rule);
-    return [links.filter(link => link.status !== 'conflicted').length, links.length];
-  };
-
-  const roleFirst = buildFinishedLayoutV2(simulation);
-  assert.deepEqual(held(roleFirst, 'R2'), [47, 47]);
-  assert.deepEqual(held(roleFirst, 'R4'), [15, 15]);
-  assert.ok(held(roleFirst, 'R1')[0] < held(roleFirst, 'R1')[1], 'the action bends');
-
-  const courseFirst = buildFinishedLayoutV2(simulation, { rulePriority: ['R2', 'R1', 'R4'] });
-  assert.deepEqual(held(courseFirst, 'R2'), [47, 47]);
-  assert.deepEqual(held(courseFirst, 'R1'), [47, 47]);
-  assert.ok(held(courseFirst, 'R4')[0] < held(courseFirst, 'R4')[1], 'role changes yield');
-  assert.ok(Math.max(...residuals(courseFirst).R2.map(Math.abs)) < 0.0001);
+  assert.equal(buildFinishedLayoutV2(
+    { events: [], snapshots: [], diagnostics: [], totalRows: 0 }).runs, 0);
 });
 
 test('v2 adds the section 7.5 transition triangles without moving a placed cell', () => {

@@ -1,27 +1,27 @@
 import type { FinishedCell, FinishedLayout, FinishedPoint } from './finishedLayout';
 import type { Simulation, SplitEvent } from './types';
 
-/** Placement rules kept in v2: the action scaffold, the cord join, the role change. */
-export type FinishedRuleId = 'R1' | 'R2' | 'R4';
+export type FinishedRuleId = 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
 
 export type FinishedLink = {
   rule: FinishedRuleId;
-  kind: 'course' | 'continuation' | 'return' | 'departure';
+  kind: 'order' | 'course' | 'continuation' | 'column' | 'return' | 'departure';
   cordId: string;
   /** Event indices, not array positions: the layout keeps one cell per event. */
   from: number;
   to: number;
-  /** Required y(to) − y(from) between the two cells' reference corners. */
+  /** Required minimum (R0/R3) or exact (all other rules) y(to) - y(from). */
   delta: number;
-  /** anchored: this link placed the cell. implied: already true. conflicted: dropped. */
+  /** anchored: the rule placed the later cell. implied: already true.
+   * conflicted: an exact rule yielded to a higher-priority constraint. */
   status: 'anchored' | 'implied' | 'conflicted';
-  /** Signed amount by which an implied or conflicted link misses its delta. */
+  /** y(to) - y(from) - delta. Positive residuals satisfy R0/R3 minima. */
   residual: number;
 };
 
 export type FinishedLayoutV2 = FinishedLayout & {
   links: FinishedLink[];
-  /** Groups of cells no rule ties together; each is placed on the course baseline. */
+  /** Number of equality-connected groups in the final placement audit. */
   runs: number;
 };
 
@@ -30,32 +30,24 @@ type LayoutOptions = {
   columnWidth?: number;
   padding?: number;
   tipAngle?: number;
-  /** The rules to apply, in order of authority. The default follows the spec:
-   * R2 exact, R4 exact where free, R1 provisional. Reordering trades one
-   * rule's exactness for another's — putting R1 ahead of R4 keeps actions
-   * rigid and drops the role changes that disagree with them. A rule left out
-   * of the list is not applied at all. */
-  rulePriority?: FinishedRuleId[];
 };
-
-const defaultPriority: FinishedRuleId[] = ['R2', 'R4', 'R1'];
 
 const tolerance = 0.000001;
 
 /**
- * Finished layout v2. Every cell's vertical position is one number — the y of
- * its `start` corner — and each rule is a constant offset between two of them:
+ * Finished layout v2 is a chronological, top-to-bottom placement pass.
+ * Once a cell is placed its coordinates never change. For each new cell:
  *
- *   R1 course      y(next)  = y(previous) + crossGapDrop
- *   R2 cord join   y(cell)  = y(previous visible cell) + cellSide − crossGapDrop
- *   R4 role change y(cell)  = y(neighbour) + cellSide / 2
+ *   R0 keeps the new cell at or below the prior cell in its column.
+ *   R1 proposes the preceding action corner.
+ *   R2 takes precedence when the splittee continues a visible cord.
+ *   R3 pushes only the new cell down far enough that it cannot overlap the
+ *      previous cell of the same lean in the same column. A gap is valid.
+ *   R4 is used when R1, R2, and R3 place no constraint on that cell, then R0
+ *      still clamps it if the proposed role-change position would move upward.
  *
- * The rules are applied in that order of authority — R2, then R4, then R1 —
- * onto a union-find of cells that already share a fixed offset. A link between
- * two separate groups places one of them exactly; a link inside one group is
- * only checked, never enforced, so no rule can reopen a join an earlier rule
- * made exact. Column packing (R3) is deliberately absent: cells in a column sit
- * where their own runs leave them.
+ * Opposite leans deliberately have no column constraint, so their inherited
+ * placement may overlap or leave extra space.
  */
 export function buildFinishedLayoutV2(
   simulation: Simulation,
@@ -64,7 +56,6 @@ export function buildFinishedLayoutV2(
     columnWidth = 64,
     padding = 28,
     tipAngle = 30,
-    rulePriority = defaultPriority,
   }: LayoutOptions = {},
 ): FinishedLayoutV2 {
   const laneCount = simulation.snapshots[0]?.lanes.length ?? 0;
@@ -91,154 +82,227 @@ export function buildFinishedLayoutV2(
     };
   }
 
-  const links = collectLinks(events, { crossGapDrop, cellSide }, rulePriority);
-  const solved = solveOffsets(events, links);
-  const baseline = courseBaseline(events, crossGapDrop);
-  const y = placeRuns(events, solved, baseline);
-
+  const eventPositions = new Map(events.map((event, index) => [event.eventIndex, index]));
+  const baseline = courseBaseline(events, eventPositions, crossGapDrop);
+  const { y, links } = placeChronologically(
+    events, eventPositions, baseline, { crossGapDrop, cellSide },
+  );
   const returning = returningSplittees(events);
+  const topOffset = padding + cellSide - crossGapDrop;
   const cells = events.map((event, index) => cellFor(
     event,
-    { x: (event.fromLane - 1) * columnWidth, y: y[index] },
-    { x: (event.toLane - 1) * columnWidth, y: y[index] + crossGapDrop },
+    { x: (event.fromLane - 1) * columnWidth + padding, y: y[index] + topOffset },
+    { x: (event.toLane - 1) * columnWidth + padding, y: y[index] + crossGapDrop + topOffset },
     cellSide,
     returning[index],
   ));
-
-  const allPoints = cells.flatMap((cell) => cell.points);
-  const minX = Math.min(...allPoints.map((point) => point.x));
-  const maxX = Math.max(...allPoints.map((point) => point.x));
-  const minY = Math.min(...allPoints.map((point) => point.y));
-  const maxY = Math.max(...allPoints.map((point) => point.y));
+  const maxY = Math.max(...cells.flatMap(cell => cell.points.map(point => point.y)));
 
   return {
-    width: Math.max(320, maxX - minX + padding * 2),
-    height: Math.max(260, maxY - minY + padding * 2),
+    width: Math.max(320, columnCount * columnWidth + padding * 2),
+    height: Math.max(260, maxY + padding),
     columnCount,
     cellSpan,
     cellSide,
     packedTipAngle,
-    cells: cells.map((cell) => translateCell(cell, padding - minX, padding - minY)),
+    cells,
     links,
-    runs: solved.runs,
+    runs: equalityRuns(events.length, links, eventPositions),
   };
 }
 
-/**
- * One pass over the events collects every link each rule asks for; the result
- * is returned in the caller's order of authority, not in event order.
- */
-function collectLinks(
+function placeChronologically(
   events: SplitEvent[],
+  eventPositions: Map<number, number>,
+  baseline: number[],
   { crossGapDrop, cellSide }: { crossGapDrop: number; cellSide: number },
-  priority: FinishedRuleId[],
-): FinishedLink[] {
-  const byRule: Record<FinishedRuleId, FinishedLink[]> = { R1: [], R2: [], R4: [] };
-  const join = byRule.R2;
-  const role = byRule.R4;
-  const course = byRule.R1;
-  const lastVisible = new Map<string, SplitEvent>();
-  const lastSplit = new Map<string, SplitEvent>();
-  const link = (
+): { y: number[]; links: FinishedLink[] } {
+  const y: number[] = [];
+  const links: FinishedLink[] = [];
+  const lastVisible = new Map<string, number>();
+  const lastSplit = new Map<string, number>();
+  const lastInColumn = new Map<number, number>();
+  const lastSameLean = new Map<string, number>();
+
+  const makeLink = (
     rule: FinishedRuleId,
     kind: FinishedLink['kind'],
     cordId: string,
-    from: SplitEvent,
-    to: SplitEvent,
+    from: number,
+    to: number,
     delta: number,
   ): FinishedLink => ({
-    rule, kind, cordId, from: from.eventIndex, to: to.eventIndex, delta,
-    status: 'conflicted', residual: 0,
+    rule,
+    kind,
+    cordId,
+    from: events[from].eventIndex,
+    to: events[to].eventIndex,
+    delta,
+    status: 'conflicted',
+    residual: 0,
   });
 
   for (const [index, event] of events.entries()) {
+    const constraints: FinishedLink[] = [];
     const previous = events[index - 1];
-    if (previous && sameAction(previous, event)) {
-      // R1: the splitter leaves one cell exactly where it enters the next, so
-      // the whole action hangs off one straight line, one drop per column.
-      course.push(link('R1', 'course', event.splitterId, previous, event, crossGapDrop));
+    let order: FinishedLink | undefined;
+    let course: FinishedLink | undefined;
+    let continuation: FinishedLink | undefined;
+
+    const columnIndex = columnOf(event);
+    const previousInColumn = lastInColumn.get(columnIndex);
+    if (previousInColumn !== undefined) {
+      order = makeLink('R0', 'order', `column:${columnIndex}`, previousInColumn, index, 0);
+      constraints.push(order);
     }
 
-    const continuing = lastVisible.get(event.splitteeId);
-    if (continuing
-      && continuing.fromLane === event.toLane
-      && adjacent(continuing, event)) {
-      // R2: the cord's outgoing top corner is the next cell's incoming top
-      // corner, which shares the whole edge because both sides are cellSide.
-      join.push(link('R2', 'continuation', event.splitteeId,
-        continuing, event, cellSide - crossGapDrop));
+    if (previous && sameAction(previous, event)) {
+      course = makeLink('R1', 'course', event.splitterId, index - 1, index, crossGapDrop);
+      constraints.push(course);
+    }
+
+    const continuingIndex = lastVisible.get(event.splitteeId);
+    const continuing = continuingIndex === undefined ? undefined : events[continuingIndex];
+    const continuingAtBoundary = continuing?.fromLane === event.toLane;
+    const continuationColumnDistance = continuing
+      ? Math.abs(columnOf(continuing) - columnOf(event))
+      : Infinity;
+    if (continuingAtBoundary && continuationColumnDistance === 1) {
+      continuation = makeLink(
+        'R2', 'continuation', event.splitteeId, continuingIndex!, index,
+        cellSide - crossGapDrop,
+      );
+      constraints.push(continuation);
     } else {
-      const host = lastSplit.get(event.splitteeId);
+      const hostIndex = lastSplit.get(event.splitteeId);
+      const host = hostIndex === undefined ? undefined : events[hostIndex];
       if (host && host.toLane === event.toLane && adjacent(host, event)) {
-        // R4, the return: the cord stops splitting and comes back beside its
-        // own last cell, half a side down its neighbour's edge.
-        role.push(link('R4', 'return', event.splitteeId, host, event, cellSide / 2));
+        constraints.push(makeLink(
+          'R4', 'return', event.splitteeId, hostIndex!, index, cellSide / 2,
+        ));
       }
     }
 
-    const leaving = lastVisible.get(event.splitterId);
+    const leavingIndex = lastVisible.get(event.splitterId);
+    const leaving = leavingIndex === undefined ? undefined : events[leavingIndex];
     if (leaving && leaving.fromLane === event.fromLane && adjacent(leaving, event)) {
-      // R4, the departure: the mirror of the return, anchored on the edge the
-      // cord's last visible cell keeps at the lane it splits from.
-      role.push(link('R4', 'departure', event.splitterId, leaving, event, cellSide / 2));
+      constraints.push(makeLink(
+        'R4', 'departure', event.splitterId, leavingIndex!, index, cellSide / 2,
+      ));
     }
 
-    lastVisible.set(event.splitteeId, event);
+    // A same-gap opposite-lean reversal can continue along its shared edge,
+    // but it is only a fallback. An explicit role change on this event keeps
+    // R4 authority (Eyes e70/e87); without one, continuity places the turn
+    // (Eyes e65/e82).
+    if (continuingAtBoundary
+      && continuationColumnDistance === 0
+      && !constraints.some(link => link.rule === 'R4')) {
+      continuation = makeLink(
+        'R2', 'continuation', event.splitteeId, continuingIndex!, index,
+        cellSide - crossGapDrop,
+      );
+      constraints.push(continuation);
+    }
+
+    const leanKey = `${columnIndex}:${leansRight(event)}`;
+    const sameLeanIndex = lastSameLean.get(leanKey);
+    let column: FinishedLink | undefined;
+    if (sameLeanIndex !== undefined) {
+      column = makeLink('R3', 'column', leanKey, sameLeanIndex, index, cellSide);
+      constraints.push(column);
+    }
+
+    const roleChanges = constraints.filter(link => link.rule === 'R4');
+    const hasOtherConstraint = Boolean(course || continuation || column);
+    let placedBy: FinishedLink | undefined;
+    let nextY = baseline[index];
+
+    // R2 is the strongest exact proposal; R1 supplies the ordinary course
+    // scaffold only when the cord itself has no continuation anchor.
+    if (continuation) {
+      nextY = y[continuingIndex!] + continuation.delta;
+      placedBy = continuation;
+    } else if (course) {
+      nextY = y[index - 1] + course.delta;
+      placedBy = course;
+    } else if (!hasOtherConstraint && roleChanges.length) {
+      // Event order plus immutability makes R4 a true fallback. If both a
+      // return and departure exist, the first detected relation wins.
+      const role = roleChanges[0];
+      nextY = y[eventPosition(eventPositions, role.from)] + role.delta;
+      placedBy = role;
+    }
+
+    if (order) {
+      const minimumY = y[previousInColumn!];
+      if (nextY < minimumY - tolerance) {
+        nextY = minimumY;
+        placedBy = order;
+      }
+    }
+
+    if (column) {
+      const minimumY = y[sameLeanIndex!] + column.delta;
+      if (nextY < minimumY - tolerance) {
+        nextY = minimumY;
+        placedBy = column;
+      }
+    }
+
+    y.push(nextY);
+    lastInColumn.set(columnIndex, index);
+    lastSameLean.set(leanKey, index);
+    links.push(...constraints);
+
+    for (const link of constraints) {
+      const actual = nextY - y[eventPosition(eventPositions, link.from)];
+      link.residual = actual - link.delta;
+      const held = link.rule === 'R0' || link.rule === 'R3'
+        ? link.residual >= -tolerance
+        : Math.abs(link.residual) < tolerance;
+      link.status = held ? (link === placedBy ? 'anchored' : 'implied') : 'conflicted';
+    }
+
+    lastVisible.set(event.splitteeId, index);
     lastVisible.delete(event.splitterId);
-    lastSplit.set(event.splitterId, event);
+    lastSplit.set(event.splitterId, index);
     lastSplit.delete(event.splitteeId);
   }
 
-  // Authority order, not event order: the first rule to reach a pair of cells
-  // places them, and a later rule can only agree or be recorded as conflicted.
-  return priority.flatMap((rule) => byRule[rule]);
+  return { y, links };
 }
 
-/**
- * Union-find over cells, carrying each cell's offset from its group's root.
- * A link across two groups fixes them relative to each other and is recorded
- * as anchored; a link inside one group is measured against what the group
- * already says and recorded as implied or conflicted, but never enforced.
- */
-function solveOffsets(
-  events: SplitEvent[],
+function eventPosition(positions: Map<number, number>, eventIndex: number): number {
+  const index = positions.get(eventIndex);
+  if (index === undefined) throw new Error(`Finished layout cannot find event ${eventIndex}.`);
+  return index;
+}
+
+function equalityRuns(
+  count: number,
   links: FinishedLink[],
-): { offset: number[]; root: number[]; runs: number } {
-  const parent = events.map((_, index) => index);
-  const offset = events.map(() => 0);
-  const find = (index: number): number => {
-    if (parent[index] === index) return index;
-    const root = find(parent[index]);
-    offset[index] += offset[parent[index]];
-    parent[index] = root;
-    return root;
-  };
-
-  for (const item of links) {
-    const from = find(item.from);
-    const to = find(item.to);
-    if (from === to) {
-      const implied = offset[item.to] - offset[item.from];
-      item.residual = implied - item.delta;
-      item.status = Math.abs(item.residual) < tolerance ? 'implied' : 'conflicted';
-      continue;
-    }
-    parent[to] = from;
-    offset[to] = offset[item.from] + item.delta - offset[item.to];
-    item.status = 'anchored';
-    item.residual = 0;
+  eventPositions: Map<number, number>,
+): number {
+  const parent = Array.from({ length: count }, (_, index) => index);
+  const find = (index: number): number => parent[index] === index
+    ? index
+    : (parent[index] = find(parent[index]));
+  for (const link of links) {
+    if (link.rule === 'R0' || link.rule === 'R3' || link.status === 'conflicted') continue;
+    const from = find(eventPosition(eventPositions, link.from));
+    const to = find(eventPosition(eventPositions, link.to));
+    if (from !== to) parent[to] = from;
   }
-
-  const root = events.map((_, index) => find(index));
-  return { offset, root, runs: new Set(root).size };
+  return new Set(parent.map((_, index) => find(index))).size;
 }
 
-/**
- * Where no rule reaches — the first cell of the braid, and any run the rules
- * leave detached — the cell falls back to the course baseline: an action
- * starts below the ends its own splitter and the previous action left behind.
- */
-function courseBaseline(events: SplitEvent[], crossGapDrop: number): number[] {
+/** Baselines are provisional and never translate an already placed cell. */
+function courseBaseline(
+  events: SplitEvent[],
+  eventPositions: Map<number, number>,
+  crossGapDrop: number,
+): number[] {
   const baseline = new Array<number>(events.length).fill(0);
   const cordY = new Map<string, number>();
   let previousActionStart = 0;
@@ -246,29 +310,18 @@ function courseBaseline(events: SplitEvent[], crossGapDrop: number): number[] {
   for (const action of splitActions(events)) {
     const splitterId = action[0].splitterId;
     const start = Math.max(cordY.get(splitterId) ?? 0, previousActionStart);
-    action.forEach((event, step) => { baseline[event.eventIndex] = start + step * crossGapDrop; });
+    action.forEach((event, step) => {
+      baseline[eventPosition(eventPositions, event.eventIndex)] = start + step * crossGapDrop;
+    });
     previousActionStart = start;
     for (const event of action) {
-      const end = baseline[event.eventIndex] + crossGapDrop;
+      const index = eventPosition(eventPositions, event.eventIndex);
+      const end = baseline[index] + crossGapDrop;
       cordY.set(event.splitterId, end);
       cordY.set(event.splitteeId, end);
     }
   }
   return baseline;
-}
-
-/** Translate each run as one body: its earliest cell lands on the baseline. */
-function placeRuns(
-  events: SplitEvent[],
-  { offset, root }: { offset: number[]; root: number[] },
-  baseline: number[],
-): number[] {
-  const runOffset = new Map<number, number>();
-  events.forEach((_, index) => {
-    if (runOffset.has(root[index])) return;
-    runOffset.set(root[index], baseline[index] - offset[index]);
-  });
-  return events.map((_, index) => runOffset.get(root[index])! + offset[index]);
 }
 
 /** A cord returning to the surface may overlap the cell it emerges from. */
@@ -293,6 +346,10 @@ function adjacent(a: SplitEvent, b: SplitEvent): boolean {
 
 function columnOf(event: SplitEvent): number {
   return Math.min(event.fromLane, event.toLane);
+}
+
+function leansRight(event: SplitEvent): boolean {
+  return event.toLane > event.fromLane;
 }
 
 function splitActions(events: SplitEvent[]): SplitEvent[][] {
@@ -321,15 +378,5 @@ function cellFor(
     points: end.x > start.x
       ? [start, startBottom, end, endTop]
       : [start, endTop, end, startBottom],
-  };
-}
-
-function translateCell(cell: FinishedCell, deltaX: number, deltaY: number): FinishedCell {
-  return {
-    ...cell,
-    points: cell.points.map((point) => ({
-      x: point.x + deltaX,
-      y: point.y + deltaY,
-    })) as FinishedCell['points'],
   };
 }

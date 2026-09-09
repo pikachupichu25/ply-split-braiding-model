@@ -5,6 +5,7 @@ import { buildFinishedLayout } from './domain/finishedLayout';
 import { buildFinishedLayoutV2 } from './domain/finishedLayoutV2';
 import type { FinishedLink } from './domain/finishedLayoutV2';
 import { buildFinishedSurfaces } from './domain/finishedSurface';
+import { finishedV2ToExpectedLayout } from './domain/exportExpectedLayout';
 import { parsePattern } from './domain/parser';
 import { simulatePattern } from './domain/simulate';
 import type { Face, Simulation, SplitEvent } from './domain/types';
@@ -23,6 +24,7 @@ export default function App() {
   const [finishedAngle, setFinishedAngle] = useState(30);
   const [finishedTip, setFinishedTip] = useState(30);
   const [finishedSurfaceOn, setFinishedSurfaceOn] = useState(true);
+  const [showEventIds, setShowEventIds] = useState(true);
   const [previewWidth, setPreviewWidth] = useState(25);
   const [pendingSplitter, setPendingSplitter] = useState<number | null>(null);
   const [hoveredLane, setHoveredLane] = useState<number | null>(null);
@@ -109,9 +111,12 @@ export default function App() {
           <p className="eyebrow">Ply-split drafting table</p>
           <h1>SCOT Braid Studio</h1>
         </div>
-        <div className={`status-pill ${diagnostics.length ? 'status-pill--warning' : ''}`}>
-          <span className="status-dot" />
-          {status}
+        <div className="masthead-actions">
+          <a className="expected-layout-link" href="#/expected-layout">Expected layout editor <span>↗</span></a>
+          <div className={`status-pill ${diagnostics.length ? 'status-pill--warning' : ''}`}>
+            <span className="status-dot" />
+            {status}
+          </div>
         </div>
       </header>
 
@@ -239,6 +244,12 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
                   <button className={!finishedSurfaceOn ? 'is-active' : ''} onClick={() => setFinishedSurfaceOn(false)}>Flat</button>
                 </div>
               )}
+              {view === 'finished-v2' && (
+                <div className="toggle-group" aria-label="Event IDs">
+                  <button className={showEventIds ? 'is-active' : ''} onClick={() => setShowEventIds(true)}>Event IDs</button>
+                  <button className={!showEventIds ? 'is-active' : ''} onClick={() => setShowEventIds(false)}>Hide IDs</button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -246,7 +257,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
             <span>{view === 'finished-v1'
               ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v1`
               : view === 'finished-v2'
-                ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v2 · R1+R2+R4`
+                ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v2 · chronological R1–R4`
               : view === 'finished-dev'
                 ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · development`
                 : `fixed lanes · ${mirrorFace} display · 1 repeat`}</span>
@@ -266,7 +277,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
           {view === 'finished-v1' ? (
             <FinishedV1Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} />
           ) : view === 'finished-v2' ? (
-            <FinishedV2Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} surfaceOn={finishedSurfaceOn} />
+            <FinishedV2Preview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} surfaceOn={finishedSurfaceOn} layoutName={activeSample?.name ?? 'Edited SCOT pattern'} showEventIds={showEventIds} />
           ) : view === 'finished-dev' ? (
             <FinishedBraidPreview simulation={simulation} colors={colorMap} mirrorFace={mirrorFace} theta={finishedAngle} tipAngle={finishedTip} widthScale={previewWidth / 100} surfaceOn={finishedSurfaceOn} />
           ) : (
@@ -286,7 +297,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
             {view === 'finished-v1' ? (
               <p className="finished-caption">Finished v1 shows one sharp splittee-coloured cell per split. Cells with the same lean touch edge to edge; opposite leans can partially overlap or leave open space.</p>
             ) : view === 'finished-v2' ? (
-              <p className="finished-caption">Finished v2 places every cell from three rules only — R1 the splitter’s course, R2 the cord’s full-edge join, R4 the half-side role change — in that order of authority, with no column packing. Where the action’s corner contact disagrees with an exact cord or role anchor, the action bends; the placement audit counts what each rule holds. On top of that placement, transition edges extend to their intersection in the neighbouring column and fill the extra triangle with the continuing cord’s colour.</p>
+              <p className="finished-caption">Finished v2 places cells chronologically from top to bottom in each column and never moves one that is already placed. R1 proposes the splitter’s course, R2 proposes the cord’s full-edge join, and R3 pushes only the new cell down when it would overlap a same-lean cell in its column. Opposite leans may overlap or leave space. R4’s half-side role change is used when no R1–R3 constraint applies, while top-to-bottom ordering remains enforced.</p>
             ) : view === 'finished-dev' ? (
               <p className="finished-caption">Development preview: transition edges extend to their intersection in the neighbouring column, filling the extra triangle with the continuing cord’s colour.</p>
             ) : (
@@ -529,6 +540,8 @@ type FinishedProps = Pick<DiagramProps, 'simulation' | 'colors' | 'mirrorFace'> 
   tipAngle?: number;
   widthScale?: number;
   surfaceOn?: boolean;
+  layoutName?: string;
+  showEventIds?: boolean;
 };
 
 function FinishedV1Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1 }: FinishedProps) {
@@ -568,7 +581,7 @@ function FinishedV1Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
   );
 }
 
-function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1, surfaceOn = true }: FinishedProps) {
+function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngle = 30, widthScale = 1, surfaceOn = true, layoutName = 'SCOT pattern', showEventIds = true }: FinishedProps) {
   const tooltip = useTooltip();
   const layout = useMemo(
     () => buildFinishedLayoutV2(simulation, { theta, tipAngle }),
@@ -582,6 +595,17 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
   const colorFor = (cordId: string) => colors.get(startCords.get(cordId)?.colorSymbol ?? '') ?? '#d3a448';
   const faceTransform = mirrorFace === 'back' ? `translate(${layout.width} 0) scale(-1 1)` : undefined;
   const tally = summarizeRules(layout.links);
+  const exportLayout = () => {
+    const document = finishedV2ToExpectedLayout(layout, {
+      name: layoutName,
+      thetaDeg: theta,
+      tipAngleDeg: tipAngle,
+      columnWidth: 64,
+      face: mirrorFace,
+      colorForCord: colorFor,
+    });
+    downloadJsonFile(`${safeFileName(layoutName)}-finished-v2-layout.json`, document);
+  };
 
   return (
     <>
@@ -624,9 +648,35 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
               )}
             </g>
           </g>
+          {showEventIds && (
+            <g className="finished-event-labels" aria-hidden="true">
+              {layout.cells.map((cell) => {
+                const centre = cell.points.reduce(
+                  (point, item) => ({ x: point.x + item.x / cell.points.length, y: point.y + item.y / cell.points.length }),
+                  { x: 0, y: 0 },
+                );
+                return (
+                  <text
+                    key={cell.event.eventIndex}
+                    x={mirrorFace === 'back' ? layout.width - centre.x : centre.x}
+                    y={centre.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                  >e{cell.event.eventIndex}</text>
+                );
+              })}
+            </g>
+          )}
         </svg>
         <TooltipLayer tooltip={tooltip} />
         {!simulation.events.length && <div className="empty-canvas">Your finished v2 preview will appear here.</div>}
+      </div>
+      <div className="finished-layout-export">
+        <div>
+          <b>Use this placement as ground truth</b>
+          <span>{layout.cells.length} cells · event IDs, splitter and splittee included</span>
+        </div>
+        <button type="button" disabled={!layout.cells.length} onClick={exportLayout}>Export layout JSON <span aria-hidden="true">↓</span></button>
       </div>
       <details className="preview-disclosure preview-disclosure--audit">
         <summary>Placement audit</summary>
@@ -638,7 +688,7 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
               <span className="quiet">{rule.note}</span>
             </li>
           ))}
-          <li><b>runs</b><span>{layout.runs}</span><span className="quiet">bodies no rule ties together</span></li>
+          <li><b>groups</b><span>{layout.runs}</span><span className="quiet">exactly connected cell groups</span></li>
         </ul>
       </details>
     </>
@@ -657,8 +707,10 @@ function summarizeRules(links: FinishedLink[]) {
     };
   };
   return [
+    group('Order', 'top to bottom, earlier cells fixed', (link) => link.rule === 'R0'),
     group('R1 course', 'splitter corner to corner', (link) => link.rule === 'R1'),
     group('R2 cord join', 'full shared edge', (link) => link.rule === 'R2'),
+    group('R3 column', 'same lean never overlaps', (link) => link.rule === 'R3'),
     group('R4 return', 'half a side down its host', (link) => link.kind === 'return'),
     group('R4 departure', 'half a side down its own cell', (link) => link.kind === 'departure'),
   ];
@@ -872,6 +924,20 @@ function downloadPattern(source: string) {
   anchor.download = 'scot-pattern.scot';
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadJsonFile(name: string, value: unknown) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function safeFileName(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'scot-pattern';
 }
 
 function emptySimulation(): Simulation {
