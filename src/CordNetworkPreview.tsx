@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { renderCordNetworkSvg } from './domain/cordNetwork';
 import type { CordNetworkLayout } from './domain/cordNetwork';
+import type { CordNetworkModel, CordNetworkRequest, CordNetworkResponse } from './domain/cordNetwork.worker';
 import type { SamplePatternImage } from './examples';
 import type { Face, Simulation } from './domain/types';
 import './cordNetworkPreview.css';
 
 const photoColors = { A: '#655069', B: '#d9f2e8', C: '#1da9d2' };
+const modelLabels: Record<CordNetworkModel, string> = { spring: 'springs', harmonic: 'harmonic' };
+const modelNotes: Record<CordNetworkModel, string> = {
+  spring: 'Springs: every cord segment is a spring at its pitch length, port springs set the crossing angle, and the drawing is a minimum of that energy. Width, selvedge turns, and eye placement emerge; nothing is anchored to a frame.',
+  harmonic: 'Harmonic: junctions are averaged into a fixed strip frame, then spaced. Width is set by the cord count.',
+};
 
 export default function CordNetworkPreview({ simulation, colors, mirrorFace, referenceName, referenceImage }: {
   simulation: Simulation;
@@ -15,6 +21,7 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
   /** Photo of the real braid for the active sample, when it has one. */
   referenceImage?: SamplePatternImage;
 }) {
+  const [model, setModel] = useState<CordNetworkModel>('spring');
   const [elongation, setElongation] = useState(1.35);
   const [diameter, setDiameter] = useState(1.35);
   const [mode, setMode] = useState<'surface' | 'cords' | 'structure'>('surface');
@@ -23,20 +30,26 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
   const [shaded, setShaded] = useState(true);
   const [showIds, setShowIds] = useState(false);
   const [layout, setLayout] = useState<CordNetworkLayout>();
+  const [progress, setProgress] = useState(1);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<number>();
   useEffect(() => { setCompare(Boolean(referenceImage)); }, [referenceImage]);
 
   useEffect(() => {
-    setLayout(undefined); setError(''); setSelected(undefined);
+    setLayout(undefined); setError(''); setSelected(undefined); setProgress(0);
     const worker = new Worker(new URL('./domain/cordNetwork.worker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (event: MessageEvent<{ layout?: CordNetworkLayout; error?: string }>) => {
-      setLayout(event.data.layout); setError(event.data.error ?? '');
+    worker.onmessage = (event: MessageEvent<CordNetworkResponse>) => {
+      const { layout: next, progress: value, done, error: message } = event.data;
+      if (next) setLayout(next);
+      setError(message ?? '');
+      setProgress(done ? 1 : value);
     };
     worker.onerror = () => setError('The cord network worker could not finish. Reload the page to try again.');
-    worker.postMessage({ simulation, options: { elongation, diameter } });
+    // The spring geometry is packed at one cord diameter, so the thickness slider only scales its rendering.
+    const request: CordNetworkRequest = { simulation, model, options: model === 'spring' ? { elongation, diameter: diameter / 1.35 } : { elongation, diameter } };
+    worker.postMessage(request);
     return () => worker.terminate();
-  }, [simulation, elongation, diameter]);
+  }, [simulation, elongation, diameter, model]);
 
   const svg = useMemo(() => layout ? renderCordNetworkSvg(layout, {
     colors: { ...Object.fromEntries(colors), ...(photoPalette ? photoColors : {}) }, face: mirrorFace,
@@ -49,9 +62,11 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
   };
   const download = () => {
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-    const a = document.createElement('a'); a.href = url; a.download = 'cord-network.svg'; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = `cord-network-${model}.svg`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+  const fitting = progress < 1 && !error;
+  const status = fitting ? `Fitting ${Math.round(progress * 100)}%` : layout?.quality.converged ? 'Network solved' : 'Solve incomplete';
 
   return <section className="network-preview" aria-label="Cord network preview">
     <div className="network-intro">
@@ -59,6 +74,9 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
       <p>Every split stays connected to both cords. The surface follows their packed network.</p>
     </div>
     <div className="network-controls">
+      <div className="toggle-group" aria-label="Cord network model">
+        {(['spring', 'harmonic'] as const).map(value => <button key={value} aria-pressed={model === value} className={model === value ? 'is-active' : ''} onClick={() => setModel(value)}>{modelLabels[value]}</button>)}
+      </div>
       <div className="toggle-group" aria-label="Cord network rendering">
         {(['surface', 'cords', 'structure'] as const).map(value => <button key={value} aria-pressed={mode === value} className={mode === value ? 'is-active' : ''} onClick={() => setMode(value)}>{value}</button>)}
       </div>
@@ -73,10 +91,10 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
     </div>
     <div className={`network-comparison${referenceImage && compare ? ' has-reference' : ''}`}>
       <figure className="network-generated">
-        <figcaption><span>Generated · {mirrorFace}</span><span>{simulation.events.length} splits</span></figcaption>
-        <div className="network-scroll" aria-busy={!layout && !error}>
+        <figcaption><span>Generated · {mirrorFace} · {modelLabels[model]}{fitting && layout ? ` · fitting ${Math.round(progress * 100)}%` : ''}</span><span>{simulation.events.length} splits</span></figcaption>
+        <div className="network-scroll" aria-busy={fitting}>
           {layout ? <div className="network-drawing" onClick={e => inspect(e.target)} dangerouslySetInnerHTML={{ __html: svg }} />
-            : <p className="network-loading" role="status">{error || 'Fitting the cord network…'}</p>}
+            : <p className="network-loading" role="status">{error || (progress > 0 ? `Fitting the cord network… ${Math.round(progress * 100)}%` : 'Fitting the cord network…')}</p>}
         </div>
       </figure>
       {referenceImage && compare && <figure className="network-reference">
@@ -90,9 +108,9 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
       <input aria-label="Inspect split by ID" type="number" min="0" max={simulation.events.at(-1)?.eventIndex ?? 0} placeholder="Split ID" value={selected ?? ''} onChange={e => setSelected(e.target.value === '' ? undefined : Number(e.target.value))} />
     </div>
     {layout && <>
-      {layout.diagnostics.length > 0 && <ul className="network-diagnostics">{layout.diagnostics.map(d => <li key={d}>{d}</li>)}</ul>}
-      <div className="network-footer"><span>{layout.quality.converged ? 'Network solved' : 'Solve incomplete'} · {layout.quality.crossingConflicts.length} sampled crossing conflicts · {layout.quality.portConflicts.length} port conflicts</span><button onClick={download} disabled={!layout.cords.length}>Download SVG ↓</button></div>
+      {layout.diagnostics.length > 0 && !fitting && <ul className="network-diagnostics">{layout.diagnostics.map(d => <li key={d}>{d}</li>)}</ul>}
+      <div className="network-footer"><span>{status}{fitting ? ' · the topology audit runs once the solve settles' : ` · ${layout.quality.crossingConflicts.length} sampled crossing conflicts · ${layout.quality.portConflicts.length} port conflicts`}</span><button onClick={download} disabled={!layout.cords.length || fitting}>Download SVG ↓</button></div>
     </>}
-    <p className="network-note">Surface mode fills the regions around each split; Cords shows the underlying paths.{referenceImage ? ` The ${referenceName} centres and edges are still being calibrated against the photo.` : ''} Material tension and ply-level depth are approximations.{photoPalette ? ' Photo colours affect this preview only.' : ''}</p>
+    <p className="network-note">{modelNotes[model]} Surface mode fills the regions around each split; Cords shows the underlying paths.{referenceImage ? ` The ${referenceName} centres and edges are still being calibrated against the photo.` : ''} Material tension and ply-level depth are approximations.{photoPalette ? ' Photo colours affect this preview only.' : ''}</p>
   </section>;
 }

@@ -159,7 +159,7 @@ export function buildCordNetwork(simulation: Simulation, options: CordNetworkOpt
   return { width: n + 3, height: span + 4, diameter, cords: networkCords, junctions, points, diagnostics, quality };
 }
 
-function validate(simulation: Simulation, cords: Cord[]): string | undefined {
+export function validate(simulation: Simulation, cords: Cord[]): string | undefined {
   if (simulation.diagnostics.some(d => d.severity === 'error')) return 'Resolve the pattern errors before generating the cord network.';
   const ids = new Set(cords.map(c => c.id));
   if (ids.size !== cords.length) return 'Initial cord identities must be unique.';
@@ -272,7 +272,7 @@ export function splitCurve(p: CordCurve['points'], t: number): [CordCurve['point
   return [[p[0], a, d, f], [f, e, c, p[3]]];
 }
 export const curvePoint = (p: CordCurve['points'], t: number) => splitCurve(p, t)[0][3];
-function curveLength(p: CordCurve['points']) {
+export function curveLength(p: CordCurve['points']) {
   let length = 0, previous = p[0];
   for (let i = 1; i <= 8; i++) { const next = curvePoint(p, i / 8); length += distance(previous, next); previous = next; }
   return length;
@@ -321,7 +321,7 @@ export function findCurveCrossings(curves: CordCurve[]): NetworkPoint[] {
   return conflicts;
 }
 
-function portConflicts(events: SplitEvent[], cords: NetworkCord[]) {
+export function portConflicts(events: SplitEvent[], cords: NetworkCord[]) {
   const ports = new Map<string, NetworkPoint>();
   for (const c of cords) for (const curve of c.curves) {
     ports.set(`${curve.from}:${c.id}:out`, { x: curve.points[1].x - curve.points[0].x, y: curve.points[1].y - curve.points[0].y });

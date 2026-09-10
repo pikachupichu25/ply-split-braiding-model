@@ -12,6 +12,7 @@ This app focuses on **SCOT** (Single Course Oblique Twining), where a cord can s
 - Click-to-build: click a lane, then a target lane, to append a split row
 - Structural simulation using stable cord identities (not just final lane order)
 - Multiple render views: braid trace, finished chart (v1/v2/dev), front and back faces
+- Cord network view that solves the finished fabric as a spring network, with a harmonic model to compare against
 - Repeat handling, including automatic full-cycle length detection
 - Sample patterns (chevron, colour block, double chevron, braid, eyes, arrow)
 - `.scot` pattern download; drafts persist locally in the browser
