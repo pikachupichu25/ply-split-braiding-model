@@ -1,0 +1,307 @@
+{
+  "description": "Spring-network layout experiment (docs/spring/README.md). Graph from the astra construction plus one midpoint per junction–junction edge. Not a photo-validated result.",
+  "sample": "eyescore",
+  "profile": {
+    "theta": 0.6283185307179586,
+    "pitch": 1.0514622242382672,
+    "dMin": 0.9,
+    "terminalLength": 1.5771933363574009,
+    "turnLength": 2.041561940044896,
+    "terminalWeight": 0.25,
+    "wBend": 0.1,
+    "wCross": 0.5,
+    "wRep": 1,
+    "wOrient": 1,
+    "orientMin": 0.05,
+    "tailRepulsion": 1,
+    "iterations": 500,
+    "learningRate": 0.1,
+    "alphaMin": 0.001,
+    "polishSteps": 3000,
+    "polishDt": 0.1,
+    "polishDamping": 0.1,
+    "blocks": 1,
+    "randomSeeds": 0,
+    "thetaDeg": 36
+  },
+  "graph": {
+    "cords": 20,
+    "events": 114,
+    "nodes": 362,
+    "edges": 456,
+    "selvedgeTurns": 10,
+    "reversalSegments": 10,
+    "levelNodes": 154,
+    "scaffoldPairs": 11781,
+    "bends": 406,
+    "crosses": 228,
+    "digons": 0,
+    "unusedCords": []
+  },
+  "runs": [
+    {
+      "seed": "wiring",
+      "ms": 3793,
+      "energy": {
+        "cord": 0.1076,
+        "bend": 0.0117,
+        "cross": 0.0873,
+        "rep": 0.0775,
+        "scaffold": 0,
+        "orient": 0.0148,
+        "total": 0.299
+      },
+      "maxGradient": 0.0001,
+      "meanEdgeStrain": 0.0033,
+      "rmsEdgeStrain": 0.0226,
+      "maxEdgeStrain": 0.142,
+      "repulsion": {
+        "activePairs": 41,
+        "byKind": {
+          "junction-mid": 10,
+          "junction-junction": 4,
+          "tail-tail": 23,
+          "mid-mid": 4
+        },
+        "closest": [
+          {
+            "a": "e98",
+            "b": "C11:e80-e99",
+            "kind": "junction-mid",
+            "r": 0.66
+          },
+          {
+            "a": "e112",
+            "b": "C10:e94-e113",
+            "kind": "junction-mid",
+            "r": 0.66
+          },
+          {
+            "a": "e80",
+            "b": "e98",
+            "kind": "junction-junction",
+            "r": 0.798
+          },
+          {
+            "a": "e94",
+            "b": "e112",
+            "kind": "junction-junction",
+            "r": 0.798
+          },
+          {
+            "a": "e80",
+            "b": "e99",
+            "kind": "junction-junction",
+            "r": 0.831
+          },
+          {
+            "a": "e94",
+            "b": "e113",
+            "kind": "junction-junction",
+            "r": 0.831
+          },
+          {
+            "a": "e80",
+            "b": "C05:e98-e99",
+            "kind": "junction-mid",
+            "r": 0.836
+          },
+          {
+            "a": "e94",
+            "b": "C16:e112-e113",
+            "kind": "junction-mid",
+            "r": 0.836
+          }
+        ]
+      },
+      "crossingAngleMeanDeg": 71.05,
+      "crossingAngleStdDeg": 3.65,
+      "expectedCrossingAngleDeg": 72,
+      "wideJunctions": [],
+      "crossingAngle": {
+        "percentiles": {
+          "p10": 69.7,
+          "p25": 71.5,
+          "p50": 72,
+          "p75": 72.5,
+          "p90": 73.1
+        },
+        "interior": {
+          "count": 102,
+          "mean": 71.2,
+          "std": 3.3
+        },
+        "outer": {
+          "count": 12,
+          "mean": 69.8,
+          "std": 5.9
+        }
+      },
+      "junctionExtent": {
+        "width": 12.578,
+        "length": 12.953,
+        "idealWidth": 11.125
+      },
+      "orientation": {
+        "positive": 114,
+        "negative": 0,
+        "violated": [
+          99,
+          113
+        ]
+      },
+      "crossings": 2,
+      "digons": [],
+      "learningRateUsed": 0.1,
+      "attempts": 1,
+      "mirroredAtHalf": false,
+      "polishRescale": 0.8636,
+      "unresolved": true,
+      "log": [
+        {
+          "t": 0,
+          "alpha": 1.001,
+          "energy": {
+            "cord": 17.9439,
+            "bend": 5.1798,
+            "cross": 7.7326,
+            "rep": 7.2549,
+            "scaffold": 595.8901,
+            "orient": 0,
+            "total": 634.0012
+          }
+        },
+        {
+          "t": 50,
+          "alpha": 0.9497,
+          "energy": {
+            "cord": 5.091,
+            "bend": 0.8686,
+            "cross": 3.2658,
+            "rep": 0.8542,
+            "scaffold": 107.9535,
+            "orient": 0,
+            "total": 118.0331
+          }
+        },
+        {
+          "t": 100,
+          "alpha": 0.8954,
+          "energy": {
+            "cord": 3.5575,
+            "bend": 0.9634,
+            "cross": 3.5599,
+            "rep": 0.1224,
+            "scaffold": 95.6889,
+            "orient": 0,
+            "total": 103.8921
+          }
+        },
+        {
+          "t": 150,
+          "alpha": 0.8377,
+          "energy": {
+            "cord": 3.2412,
+            "bend": 0.9776,
+            "cross": 3.8146,
+            "rep": 0.1004,
+            "scaffold": 88.8951,
+            "orient": 0,
+            "total": 97.029
+          }
+        },
+        {
+          "t": 200,
+          "alpha": 0.7756,
+          "energy": {
+            "cord": 3.1588,
+            "bend": 0.9775,
+            "cross": 3.9131,
+            "rep": 0.0872,
+            "scaffold": 82.2146,
+            "orient": 0,
+            "total": 90.3511
+          }
+        },
+        {
+          "t": 250,
+          "alpha": 0.7081,
+          "energy": {
+            "cord": 3.1114,
+            "bend": 0.972,
+            "cross": 3.917,
+            "rep": 0.0821,
+            "scaffold": 75.0993,
+            "orient": 0.394,
+            "total": 83.5757
+          }
+        },
+        {
+          "t": 300,
+          "alpha": 0.6335,
+          "energy": {
+            "cord": 3.0294,
+            "bend": 0.9692,
+            "cross": 3.9358,
+            "rep": 0.1516,
+            "scaffold": 67.2602,
+            "orient": 0.0375,
+            "total": 75.3837
+          }
+        },
+        {
+          "t": 350,
+          "alpha": 0.5487,
+          "energy": {
+            "cord": 2.9821,
+            "bend": 0.9561,
+            "cross": 3.8601,
+            "rep": 0.152,
+            "scaffold": 58.3882,
+            "orient": 0.0305,
+            "total": 66.3688
+          }
+        },
+        {
+          "t": 400,
+          "alpha": 0.4482,
+          "energy": {
+            "cord": 2.8994,
+            "bend": 0.9368,
+            "cross": 3.7648,
+            "rep": 0.1496,
+            "scaffold": 47.8637,
+            "orient": 0.0285,
+            "total": 55.6428
+          }
+        },
+        {
+          "t": 450,
+          "alpha": 0.3172,
+          "energy": {
+            "cord": 2.7557,
+            "bend": 0.9042,
+            "cross": 3.6153,
+            "rep": 0.147,
+            "scaffold": 34.1226,
+            "orient": 0.0274,
+            "total": 41.5722
+          }
+        },
+        {
+          "t": 499,
+          "alpha": 0.0457,
+          "energy": {
+            "cord": 2.3853,
+            "bend": 0.8232,
+            "cross": 3.2917,
+            "rep": 0.145,
+            "scaffold": 5.0535,
+            "orient": 0.0241,
+            "total": 11.7229
+          }
+        }
+      ]
+    }
+  ]
+}

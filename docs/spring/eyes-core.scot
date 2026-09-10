@@ -1,0 +1,10 @@
+# Eyes rows 1-4 only, no transition rows
+color:   AABCBBCBAAAABCBBCBAA
+palette: A=brown, B=white, C=lightblue
+
+1 15>16,17,18,19,20
+2 15>14,13,12,11
+3 5>6,7,8,9,10,11
+4 5>4,3,2,1
+
+[repeat 1-4 x 6]

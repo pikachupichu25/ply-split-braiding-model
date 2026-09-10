@@ -1,0 +1,507 @@
+{
+  "description": "Spring-network layout experiment (docs/spring/README.md). Graph from the astra construction plus one midpoint per junction–junction edge. Not a photo-validated result.",
+  "sample": "eyes",
+  "profile": {
+    "theta": 0.6283185307179586,
+    "pitch": 1.0514622242382672,
+    "dMin": 0.9,
+    "terminalLength": 1.5771933363574009,
+    "turnLength": 2.041561940044896,
+    "terminalWeight": 0.25,
+    "wBend": 0.1,
+    "wCross": 0.5,
+    "wRep": 1,
+    "wOrient": 1,
+    "orientMin": 0.05,
+    "tailRepulsion": 1,
+    "iterations": 500,
+    "learningRate": 0.1,
+    "alphaMin": 0.001,
+    "polishSteps": 3000,
+    "polishDt": 0.1,
+    "polishDamping": 0.1,
+    "blocks": 3,
+    "randomSeeds": 0,
+    "thetaDeg": 36
+  },
+  "graph": {
+    "cords": 20,
+    "events": 519,
+    "nodes": 1577,
+    "edges": 2076,
+    "selvedgeTurns": 58,
+    "reversalSegments": 120,
+    "levelNodes": 559,
+    "scaffoldPairs": 155961,
+    "bends": 1708,
+    "crosses": 1038,
+    "digons": 10,
+    "unusedCords": []
+  },
+  "runs": [
+    {
+      "seed": "wiring",
+      "ms": 21179,
+      "energy": {
+        "cord": 5.3095,
+        "bend": 1.5331,
+        "cross": 5.2639,
+        "rep": 2.916,
+        "scaffold": 0,
+        "orient": 0.1766,
+        "total": 15.1992
+      },
+      "maxGradient": 0.0032,
+      "meanEdgeStrain": 0.0016,
+      "rmsEdgeStrain": 0.1239,
+      "maxEdgeStrain": 0.3634,
+      "repulsion": {
+        "activePairs": 1209,
+        "byKind": {
+          "junction-mid": 690,
+          "junction-junction": 184,
+          "junction-tail": 3,
+          "tail-tail": 23,
+          "mid-mid": 307,
+          "mid-tail": 2
+        },
+        "closest": [
+          {
+            "a": "e173",
+            "b": "C15:e178-e192",
+            "kind": "junction-mid",
+            "r": 0.658
+          },
+          {
+            "a": "e182",
+            "b": "C06:e183-e201",
+            "kind": "junction-mid",
+            "r": 0.666
+          },
+          {
+            "a": "e162",
+            "b": "C16:e143-e156",
+            "kind": "junction-mid",
+            "r": 0.667
+          },
+          {
+            "a": "e335",
+            "b": "C11:e316-e334",
+            "kind": "junction-mid",
+            "r": 0.676
+          },
+          {
+            "a": "e344",
+            "b": "C10:e325-e339",
+            "kind": "junction-mid",
+            "r": 0.676
+          },
+          {
+            "a": "e346",
+            "b": "C11:e351-e365",
+            "kind": "junction-mid",
+            "r": 0.676
+          },
+          {
+            "a": "e355",
+            "b": "C10:e356-e374",
+            "kind": "junction-mid",
+            "r": 0.676
+          },
+          {
+            "a": "e171",
+            "b": "C05:e152-e170",
+            "kind": "junction-mid",
+            "r": 0.682
+          }
+        ]
+      },
+      "crossingAngleMeanDeg": 86.8,
+      "crossingAngleStdDeg": 24.24,
+      "expectedCrossingAngleDeg": 72,
+      "wideJunctions": [
+        "e14:106.4",
+        "e27:108.6",
+        "e32:108.6",
+        "e33:117.9",
+        "e41:101.9",
+        "e46:108.6",
+        "e51:108.6",
+        "e52:104.2",
+        "e55:101.9",
+        "e60:103.3",
+        "e64:100.7",
+        "e69:100.7",
+        "e74:103.3",
+        "e82:153.7",
+        "e87:153.7",
+        "e96:127.2",
+        "e100:132.9",
+        "e101:134.7",
+        "e105:116.2",
+        "e106:134.8",
+        "e110:127.2",
+        "e114:116.9",
+        "e118:115.3",
+        "e119:133.2",
+        "e120:110.7",
+        "e123:109.9",
+        "e124:125.7",
+        "e125:110",
+        "e128:108.2",
+        "e132:115.2",
+        "e133:123.5",
+        "e137:104.8",
+        "e142:105.6",
+        "e143:115.7",
+        "e147:114.2",
+        "e151:106.5",
+        "e152:114.4",
+        "e155:105.6",
+        "e160:108.3",
+        "e169:105",
+        "e173:161.8",
+        "e174:100.3",
+        "e179:140.2",
+        "e182:160.4",
+        "e184:158.3",
+        "e188:103.5",
+        "e192:151",
+        "e193:142.3",
+        "e197:142.4",
+        "e200:103",
+        "e201:149.5",
+        "e202:142.3",
+        "e205:103.4",
+        "e206:115.2",
+        "e207:141.5",
+        "e211:128.7",
+        "e219:117.3",
+        "e220:126.5",
+        "e224:117.5",
+        "e225:106.3",
+        "e233:110",
+        "e247:110",
+        "e252:103.4",
+        "e255:119.7",
+        "e256:137.5",
+        "e260:119.3",
+        "e261:137",
+        "e265:103.3",
+        "e273:134.6",
+        "e274:140.9",
+        "e278:114.2",
+        "e279:141.1",
+        "e287:114.1",
+        "e291:115.8",
+        "e292:130.4",
+        "e293:115.6",
+        "e296:114.9",
+        "e297:125",
+        "e298:115.1",
+        "e301:114.8",
+        "e305:115.7",
+        "e306:125",
+        "e310:106.9",
+        "e315:102.5",
+        "e316:116.1",
+        "e320:102.5",
+        "e324:106.9",
+        "e325:116.1",
+        "e328:105.2",
+        "e342:105.2",
+        "e346:154.7",
+        "e347:103.5",
+        "e351:165.7",
+        "e355:154.7",
+        "e356:165.7",
+        "e361:103.5",
+        "e365:145.3",
+        "e366:141.5",
+        "e370:145.5",
+        "e373:105",
+        "e374:145.4",
+        "e375:145.5",
+        "e378:105",
+        "e379:114.1",
+        "e380:141.5",
+        "e384:134.1",
+        "e392:119.6",
+        "e393:134.1",
+        "e397:119.6",
+        "e398:105.5",
+        "e406:108.7",
+        "e420:108.7",
+        "e428:116",
+        "e429:146.6",
+        "e433:116",
+        "e434:146.6",
+        "e446:132.1",
+        "e447:139.7",
+        "e452:139.7",
+        "e465:129",
+        "e466:104.4",
+        "e471:104.4"
+      ],
+      "crossingAngle": {
+        "percentiles": {
+          "p10": 60.5,
+          "p25": 71.1,
+          "p50": 81.2,
+          "p75": 98.2,
+          "p90": 119.3
+        },
+        "interior": {
+          "count": 465,
+          "mean": 88.1,
+          "std": 24.5
+        },
+        "outer": {
+          "count": 54,
+          "mean": 75.7,
+          "std": 18.7
+        }
+      },
+      "junctionExtent": {
+        "width": 15.103,
+        "length": 41.221,
+        "idealWidth": 11.125
+      },
+      "orientation": {
+        "positive": 519,
+        "negative": 0,
+        "violated": [
+          4,
+          18,
+          78,
+          91,
+          96,
+          110
+        ]
+      },
+      "crossings": 4,
+      "digons": [
+        {
+          "junctions": [
+            421,
+            437
+          ],
+          "lensWidth": 1.132
+        },
+        {
+          "junctions": [
+            248,
+            264
+          ],
+          "lensWidth": 1.132
+        },
+        {
+          "junctions": [
+            75,
+            91
+          ],
+          "lensWidth": 1.199
+        },
+        {
+          "junctions": [
+            162,
+            173
+          ],
+          "lensWidth": 0.285
+        },
+        {
+          "junctions": [
+            344,
+            355
+          ],
+          "lensWidth": 0.336
+        },
+        {
+          "junctions": [
+            61,
+            78
+          ],
+          "lensWidth": 1.199
+        },
+        {
+          "junctions": [
+            234,
+            251
+          ],
+          "lensWidth": 1.132
+        },
+        {
+          "junctions": [
+            407,
+            424
+          ],
+          "lensWidth": 1.132
+        },
+        {
+          "junctions": [
+            335,
+            346
+          ],
+          "lensWidth": 0.336
+        },
+        {
+          "junctions": [
+            171,
+            182
+          ],
+          "lensWidth": 0.333
+        }
+      ],
+      "learningRateUsed": 0.1,
+      "attempts": 1,
+      "mirroredAtHalf": false,
+      "polishRescale": 0.8995,
+      "unresolved": true,
+      "log": [
+        {
+          "t": 0,
+          "alpha": 1.001,
+          "energy": {
+            "cord": 71.4312,
+            "bend": 20.3373,
+            "cross": 26.6901,
+            "rep": 30.9797,
+            "scaffold": 3696.9926,
+            "orient": 0,
+            "total": 3846.4309
+          }
+        },
+        {
+          "t": 50,
+          "alpha": 0.9497,
+          "energy": {
+            "cord": 33.4099,
+            "bend": 3.9104,
+            "cross": 18.7683,
+            "rep": 4.5616,
+            "scaffold": 1042.3936,
+            "orient": 0,
+            "total": 1103.0438
+          }
+        },
+        {
+          "t": 100,
+          "alpha": 0.8954,
+          "energy": {
+            "cord": 18.5848,
+            "bend": 4.011,
+            "cross": 20.2289,
+            "rep": 2.3315,
+            "scaffold": 923.549,
+            "orient": 0,
+            "total": 968.7052
+          }
+        },
+        {
+          "t": 150,
+          "alpha": 0.8377,
+          "energy": {
+            "cord": 17.0181,
+            "bend": 4.0283,
+            "cross": 20.689,
+            "rep": 2.2492,
+            "scaffold": 859.0079,
+            "orient": 0,
+            "total": 902.9925
+          }
+        },
+        {
+          "t": 200,
+          "alpha": 0.7756,
+          "energy": {
+            "cord": 16.3373,
+            "bend": 4.0133,
+            "cross": 20.7902,
+            "rep": 2.2126,
+            "scaffold": 795.0516,
+            "orient": 0,
+            "total": 838.4051
+          }
+        },
+        {
+          "t": 250,
+          "alpha": 0.7081,
+          "energy": {
+            "cord": 15.6382,
+            "bend": 3.9838,
+            "cross": 20.798,
+            "rep": 2.142,
+            "scaffold": 726.0965,
+            "orient": 10.6651,
+            "total": 779.3238
+          }
+        },
+        {
+          "t": 300,
+          "alpha": 0.6335,
+          "energy": {
+            "cord": 14.9398,
+            "bend": 3.9266,
+            "cross": 20.8873,
+            "rep": 1.9198,
+            "scaffold": 649.9382,
+            "orient": 0.3527,
+            "total": 691.9643
+          }
+        },
+        {
+          "t": 350,
+          "alpha": 0.5487,
+          "energy": {
+            "cord": 14.0521,
+            "bend": 3.8853,
+            "cross": 20.6774,
+            "rep": 1.7956,
+            "scaffold": 563.4696,
+            "orient": 0.223,
+            "total": 604.103
+          }
+        },
+        {
+          "t": 400,
+          "alpha": 0.4482,
+          "energy": {
+            "cord": 13.6036,
+            "bend": 3.822,
+            "cross": 20.3061,
+            "rep": 1.7069,
+            "scaffold": 460.9309,
+            "orient": 0.2138,
+            "total": 500.5833
+          }
+        },
+        {
+          "t": 450,
+          "alpha": 0.3172,
+          "energy": {
+            "cord": 12.9743,
+            "bend": 3.7123,
+            "cross": 19.7165,
+            "rep": 1.594,
+            "scaffold": 327.2646,
+            "orient": 0.2023,
+            "total": 365.4639
+          }
+        },
+        {
+          "t": 499,
+          "alpha": 0.0457,
+          "energy": {
+            "cord": 11.703,
+            "bend": 3.4532,
+            "cross": 18.2598,
+            "rep": 1.3778,
+            "scaffold": 47.7831,
+            "orient": 0.1775,
+            "total": 82.7544
+          }
+        }
+      ]
+    }
+  ]
+}
