@@ -27,7 +27,6 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
   const [mode, setMode] = useState<'surface' | 'cords' | 'structure'>('surface');
   const [compare, setCompare] = useState(Boolean(referenceImage));
   const [photoPalette, setPhotoPalette] = useState(false);
-  const [shaded, setShaded] = useState(true);
   const [showIds, setShowIds] = useState(false);
   const [layout, setLayout] = useState<CordNetworkLayout>();
   const [progress, setProgress] = useState(1);
@@ -53,8 +52,8 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
 
   const svg = useMemo(() => layout ? renderCordNetworkSvg(layout, {
     colors: { ...Object.fromEntries(colors), ...(photoPalette ? photoColors : {}) }, face: mirrorFace,
-    shaded, showEventIds: showIds, centerlines: mode === 'structure', surface: mode !== 'cords',
-  }) : '', [layout, colors, mirrorFace, photoPalette, mode, shaded, showIds]);
+    shaded: true, showEventIds: showIds, centerlines: mode === 'structure', surface: mode !== 'cords',
+  }) : '', [layout, colors, mirrorFace, photoPalette, mode, showIds]);
   const selectedJunction = layout?.junctions.find(j => j.event.eventIndex === selected);
   const inspect = (target: EventTarget | null) => {
     const value = target instanceof Element ? target.closest('[data-event-index]')?.getAttribute('data-event-index') : null;
@@ -80,7 +79,6 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
       <div className="toggle-group" aria-label="Cord network rendering">
         {(['surface', 'cords', 'structure'] as const).map(value => <button key={value} aria-pressed={mode === value} className={mode === value ? 'is-active' : ''} onClick={() => setMode(value)}>{value}</button>)}
       </div>
-      <label><input type="checkbox" checked={shaded} onChange={e => setShaded(e.target.checked)} />Shading</label>
       <label><input type="checkbox" checked={showIds} onChange={e => setShowIds(e.target.checked)} />Split IDs</label>
       {referenceImage && <label><input type="checkbox" checked={compare} onChange={e => setCompare(e.target.checked)} />Compare {referenceName} photo</label>}
       <label><input type="checkbox" checked={photoPalette} onChange={e => setPhotoPalette(e.target.checked)} />Photo colours (A–C)</label>
