@@ -354,7 +354,6 @@ export function portConflicts(events: SplitEvent[], cords: NetworkCord[]) {
 export type NetworkRenderOptions = {
   colors: Record<string, string>;
   face?: 'front' | 'back';
-  shaded?: boolean;
   showEventIds?: boolean;
   centerlines?: boolean;
   surface?: boolean;
@@ -365,7 +364,7 @@ const escapeXml = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 export function renderCordNetworkSvg(layout: CordNetworkLayout, options: NetworkRenderOptions): string {
   const { width, height, diameter: d } = layout;
   const color = new Map(layout.cords.map(c => [c.id, escapeXml(options.colors[c.colorSymbol] ?? '#a89b84')]));
-  const stroke = (path: string, fill: string, cap = 'round') => `${options.shaded ? `<path d="${path}" stroke="#302833" stroke-opacity=".38" stroke-width="${d + 0.045}" stroke-linecap="${cap}"/>` : ''}<path d="${path}" stroke="${fill}" stroke-width="${d}" stroke-linecap="${cap}"/>`;
+  const stroke = (path: string, fill: string, cap = 'round') => `<path d="${path}" stroke="${fill}" stroke-width="${d}" stroke-linecap="${cap}"/>`;
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Experimental continuous cord network, ${layout.junctions.length} split events" style="display:block;width:100%;height:auto"><g transform="${options.face === 'back' ? `translate(${width} 0) scale(-1 1)` : ''}" fill="none" stroke-linejoin="round">`;
   for (const c of layout.cords) {
     const path = c.curves.map((s, i) => curvePath(s.points, i === 0)).join('');
@@ -379,7 +378,6 @@ export function renderCordNetworkSvg(layout: CordNetworkLayout, options: Network
     const e = j.event, path = j.patch.map((p, i) => curvePath(p, i === 0)).join('');
     const title = `Split ${e.eventIndex} · row ${e.rowInstance} (source ${e.sourceRow}) · ${e.splitterId} through ${e.splitteeId}`;
     svg += `<g data-event-index="${e.eventIndex}"><title>${escapeXml(title)}</title>${options.surface ? `<path d="${path}" stroke="${color.get(e.splitteeId)}" stroke-width="${d}" stroke-linecap="butt"/>` : stroke(path, color.get(e.splitteeId)!, 'butt')}`;
-    if (options.shaded) svg += `<path d="${path}" stroke="white" stroke-opacity=".10" stroke-width="${d * 0.25}" stroke-linecap="butt"/>`;
     svg += '</g>';
   }
   if (options.centerlines) {

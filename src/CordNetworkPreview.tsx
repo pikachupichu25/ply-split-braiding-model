@@ -52,7 +52,7 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
 
   const svg = useMemo(() => layout ? renderCordNetworkSvg(layout, {
     colors: { ...Object.fromEntries(colors), ...(photoPalette ? photoColors : {}) }, face: mirrorFace,
-    shaded: true, showEventIds: showIds, centerlines: mode === 'structure', surface: mode !== 'cords',
+    showEventIds: showIds, centerlines: mode === 'structure', surface: mode !== 'cords',
   }) : '', [layout, colors, mirrorFace, photoPalette, mode, showIds]);
   const selectedJunction = layout?.junctions.find(j => j.event.eventIndex === selected);
   const inspect = (target: EventTarget | null) => {

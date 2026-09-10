@@ -2,12 +2,12 @@
   {
     "name": "Continuous cords",
     "diameter": 1.35,
-    "events": 519,
+    "events": 570,
     "quality": {
-      "iterations": 75,
-      "residual": 9.682893300410959e-10,
+      "iterations": 76,
+      "residual": 7.669298709375864e-10,
       "converged": true,
-      "parallelPairs": 10,
+      "parallelPairs": 6,
       "crossingConflicts": [],
       "portConflicts": [],
       "smoothing": 0.28,
@@ -18,28 +18,12 @@
   {
     "name": "Network surface",
     "diameter": 1.35,
-    "events": 519,
+    "events": 570,
     "quality": {
-      "iterations": 75,
-      "residual": 9.682893300410959e-10,
+      "iterations": 76,
+      "residual": 7.669298709375864e-10,
       "converged": true,
-      "parallelPairs": 10,
-      "crossingConflicts": [],
-      "portConflicts": [],
-      "smoothing": 0.28,
-      "relaxationSteps": 80,
-      "bowScale": 1
-    }
-  },
-  {
-    "name": "Surface + shading",
-    "diameter": 1.35,
-    "events": 519,
-    "quality": {
-      "iterations": 75,
-      "residual": 9.682893300410959e-10,
-      "converged": true,
-      "parallelPairs": 10,
+      "parallelPairs": 6,
       "crossingConflicts": [],
       "portConflicts": [],
       "smoothing": 0.28,

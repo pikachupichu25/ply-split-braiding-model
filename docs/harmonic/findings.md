@@ -2,7 +2,7 @@
 
 ## 1. What the supplied photograph establishes
 
-![Real Eyes braid](../../public/expected-layouts/eyes.png)
+![Real Eyes braid](../../public/expected-layouts/eyes.webp)
 
 Direct visual observations, rather than claims about the unseen construction:
 

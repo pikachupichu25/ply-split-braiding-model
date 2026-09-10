@@ -1,6 +1,6 @@
 # Finished appearance from split events
 
-Research date: 2026-09-09. Reference: [`eyes.png`](../../public/expected-layouts/eyes.png).
+Research date: 2026-09-09. Reference: [`eyes.webp`](../../public/expected-layouts/eyes.webp).
 
 **Recommendation: reconstruct a network of continuous cords, solve its packed geometry, then render the local ply openings.** The eyes should emerge from cord colours and connectivity. They should not be drawn as predefined eye shapes or positioned as independent coloured cells.
 

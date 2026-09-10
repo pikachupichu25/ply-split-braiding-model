@@ -168,7 +168,7 @@ const report = {
   description: 'Topology audit of current 20-cord Eyes source; no finished-layout inputs. Face walks assume current simulator fixed-frame lane convention.',
   sourcePattern: wayuuFajon20Pattern,
   sourceSha256: createHash('sha256').update(wayuuFajon20Pattern).digest('hex'),
-  referenceSha256: createHash('sha256').update(readFileSync(new URL('../../public/expected-layouts/eyes.png', import.meta.url))).digest('hex'),
+  referenceSha256: createHash('sha256').update(readFileSync(new URL('../../public/expected-layouts/eyes.webp', import.meta.url))).digest('hex'),
   summary, rows: rowSummary,
   cords: cords.map(c => ({ ...c, visits: byCord.get(c.id) })),
   segments: edges, faces, roleSwitches: switches,
