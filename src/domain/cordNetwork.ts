@@ -142,15 +142,9 @@ export function buildCordNetwork(simulation: Simulation, options: CordNetworkOpt
   }
 
   const byId = new Map(networkCords.map(c => [c.id, c]));
-  const junctions = events.map((event, i): NetworkJunction => {
-    const cord = byId.get(event.splitteeId)!, k = cord.nodes.indexOf(i);
-    const before = cord.curves[k - 1].points, after = cord.curves[k].points;
-    // Keep the cap within its own incident segments. Exact Bézier subdivision
-    // avoids the detached capsules produced by straight bridge approximations.
-    const beforeT = Math.min(0.49, diameter * 0.62 / Math.max(1e-8, curveLength(before)));
-    const afterT = Math.min(0.49, diameter * 0.62 / Math.max(1e-8, curveLength(after)));
-    return { event, position: points[i], patch: [splitCurve(before, 1 - beforeT)[1], splitCurve(after, afterT)[0]] };
-  });
+  const junctions = events.map((event, i): NetworkJunction => ({
+    event, position: points[i], patch: junctionPatch(byId.get(event.splitteeId)!, byId.get(event.splitterId)!, i, diameter),
+  }));
   const diagnostics: string[] = [];
   if (!events.length) diagnostics.push('No splits yet: the cords are shown before they are joined.');
   if (!quality.converged) diagnostics.push('The network solve reached its iteration limit.');
@@ -266,6 +260,26 @@ function relaxSpacing(nodes: Node[], eventCount: number, target: number): number
   return steps;
 }
 
+/** The splittee owns its crossings, so its cap has to hide the splitter's full
+ * width: half a diameter where the two meet square, and more as the crossing
+ * turns oblique. The reach stays inside the two incident segments, and exact
+ * Bézier subdivision avoids the detached capsules a straight bridge leaves.
+ */
+export function junctionPatch(splittee: NetworkCord, splitter: NetworkCord, node: number, diameter: number): NetworkJunction['patch'] {
+  const k = splittee.nodes.indexOf(node);
+  const before = splittee.curves[k - 1].points, after = splittee.curves[k].points;
+  const along = leaving(after), across = leaving(splitter.curves[splitter.nodes.indexOf(node)].points);
+  // Sine of the crossing angle; the floor caps the reach for near-parallel pairs.
+  const reach = diameter * 0.62 / Math.max(0.5, Math.abs(along.x * across.y - along.y * across.x));
+  const at = (p: CordCurve['points']) => Math.min(0.49, reach / Math.max(1e-8, curveLength(p)));
+  return [splitCurve(before, 1 - at(before))[1], splitCurve(after, at(after))[0]];
+}
+/** Unit direction a curve leaves its first endpoint in, robust to flat handles. */
+function leaving(p: CordCurve['points']): NetworkPoint {
+  const q = curvePoint(p, 0.25), length = Math.hypot(q.x - p[0].x, q.y - p[0].y);
+  return length < 1e-8 ? { x: 0, y: 0 } : { x: (q.x - p[0].x) / length, y: (q.y - p[0].y) / length };
+}
+
 export function splitCurve(p: CordCurve['points'], t: number): [CordCurve['points'], CordCurve['points']] {
   const a = mix(p[0], p[1], t), b = mix(p[1], p[2], t), c = mix(p[2], p[3], t);
   const d = mix(a, b, t), e = mix(b, c, t), f = mix(d, e, t);
@@ -364,7 +378,7 @@ export function renderCordNetworkSvg(layout: CordNetworkLayout, options: Network
   for (const j of layout.junctions) {
     const e = j.event, path = j.patch.map((p, i) => curvePath(p, i === 0)).join('');
     const title = `Split ${e.eventIndex} · row ${e.rowInstance} (source ${e.sourceRow}) · ${e.splitterId} through ${e.splitteeId}`;
-    svg += `<g data-event-index="${e.eventIndex}"><title>${escapeXml(title)}</title>${options.surface ? `<path d="${path}" stroke="transparent" stroke-width="${d}"/>` : stroke(path, color.get(e.splitteeId)!, 'butt')}`;
+    svg += `<g data-event-index="${e.eventIndex}"><title>${escapeXml(title)}</title>${options.surface ? `<path d="${path}" stroke="${color.get(e.splitteeId)}" stroke-width="${d}" stroke-linecap="butt"/>` : stroke(path, color.get(e.splitteeId)!, 'butt')}`;
     if (options.shaded) svg += `<path d="${path}" stroke="white" stroke-opacity=".10" stroke-width="${d * 0.25}" stroke-linecap="butt"/>`;
     svg += '</g>';
   }

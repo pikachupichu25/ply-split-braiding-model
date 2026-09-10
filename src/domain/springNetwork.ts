@@ -1,5 +1,5 @@
 import type { Cord, Simulation, SplitEvent } from './types';
-import { curveLength, findCurveCrossings, portConflicts, splitCurve, validate } from './cordNetwork.ts';
+import { findCurveCrossings, junctionPatch, portConflicts, validate } from './cordNetwork.ts';
 import type { CordCurve, CordNetworkLayout, NetworkCord, NetworkJunction, NetworkPoint } from './cordNetwork.ts';
 
 /**
@@ -431,13 +431,9 @@ function toLayout(g: Graph, p: Profile, raw: Float64Array, result: SolveResult, 
     return { ...g.cords[c], nodes, curves };
   });
   const byId = new Map(cords.map(c => [c.id, c]));
-  const junctions = g.events.map((event, i): NetworkJunction => {
-    const cord = byId.get(event.splitteeId)!, k = cord.nodes.indexOf(i);
-    const before = cord.curves[k - 1].points, after = cord.curves[k].points;
-    const beforeT = Math.min(0.49, p.diameter * 0.4 / Math.max(1e-8, curveLength(before)));
-    const afterT = Math.min(0.49, p.diameter * 0.4 / Math.max(1e-8, curveLength(after)));
-    return { event, position: points[i], patch: [splitCurve(before, 1 - beforeT)[1], splitCurve(after, afterT)[0]] };
-  });
+  const junctions = g.events.map((event, i): NetworkJunction => ({
+    event, position: points[i], patch: junctionPatch(byId.get(event.splitteeId)!, byId.get(event.splitterId)!, i, p.diameter),
+  }));
   // The topology audit is for finished geometry; intermediate frames skip it so previews stay cheap.
   const crossingConflicts = audit ? findCurveCrossings(cords.flatMap(c => c.curves)) : [];
   const ports = audit && E ? portConflicts(g.events, cords) : [];

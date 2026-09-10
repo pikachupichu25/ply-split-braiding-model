@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildCordNetwork, curvePoint, findCurveCrossings, networkSurfacePatches, renderCordNetworkSvg, splitCurve } from '../src/domain/cordNetwork.ts';
+import { buildCordNetwork, curveLength, curvePoint, findCurveCrossings, networkSurfacePatches, renderCordNetworkSvg, splitCurve } from '../src/domain/cordNetwork.ts';
+import { buildSpringNetwork } from '../src/domain/springNetwork.ts';
 import type { CordCurve } from '../src/domain/cordNetwork.ts';
 import { parsePattern } from '../src/domain/parser.ts';
 import { simulatePattern } from '../src/domain/simulate.ts';
@@ -51,6 +52,20 @@ test('repeated pair meetings retain distinct curved segments and all transition 
   // Independent audit: 2*2 + 16*3 + 132*4 + 4*5 incidences in bounded faces.
   assert.equal(patches.length, 600);
   assert.ok(patches.every(p => p.node >= 0 && p.node < 173 && !/NaN|Infinity/.test(p.path)));
+});
+
+test('the splittee cap reaches far enough to hide the splitter at every crossing', () => {
+  for (const [model, result] of [['harmonic', layout], ['spring', buildSpringNetwork(eyes)]] as const) {
+    const byId = new Map(result.cords.map(c => [c.id, c]));
+    result.junctions.forEach((j, i) => {
+      const splittee = byId.get(j.event.splitteeId)!, k = splittee.nodes.indexOf(i);
+      for (const [cap, segment] of [[j.patch[0], splittee.curves[k - 1].points], [j.patch[1], splittee.curves[k].points]] as const) {
+        // Half a diameter clears a square crossing; only a short segment may cut it shorter.
+        const needed = Math.min(0.3 * curveLength(segment), result.diameter / 2);
+        assert.ok(curveLength(cap) >= needed, `${model} split ${i}: cap ${curveLength(cap)} short of ${needed}`);
+      }
+    });
+  }
 });
 
 test('geometry is unchanged by recolouring and bijective cord renaming', () => {
@@ -137,5 +152,8 @@ test('SVG export mirrors one object, retains all events, and escapes external te
   const injection = renderCordNetworkSvg(layout, { colors: { A: '\"><script>alert(1)</script>' } });
   assert.ok(!injection.includes('<script>'));
   assert.ok(!front.includes('expected-layouts'));
+  // Surface mode paints each crossing in the splittee's colour, so no splitter shows through.
+  assert.ok(!front.includes('stroke="transparent"'));
+  assert.equal((front.match(/<title>Split [^<]*<\/title><path d="[^"]*" stroke="(?:white|cyan|#655069)"/g) ?? []).length, 173);
   assert.ok(!/NaN|Infinity/.test(front));
 });
