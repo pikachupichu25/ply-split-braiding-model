@@ -6,6 +6,7 @@ import { wayuuFajon20Pattern } from './wayuuFajon20';
 import { arrowPattern } from './arrow';
 import { eyes36Pattern } from './eyes36';
 import { eyeletsPattern } from './eyelets';
+import { eyes36AltPattern } from './eyes36Alt';
 
 export type SamplePatternImage = {
   /** Path under `public/`, e.g. `/expected-layouts/eyes.webp`. */
@@ -74,6 +75,12 @@ export const samplePatterns: SamplePattern[] = [
     name: 'Eyelets',
     summary: 'Eyelets',
     source: eyeletsPattern,
+  },
+  {
+    id: 'eyes-36-alt',
+    name: 'Eyes (36-cord, alt method)',
+    summary: 'The same 36-cord A-B-C-D-E colour layout as Eyes (36-cord), worked with a different row sequence: a 7-row phase repeated 9 times, then a mirrored 7-row phase repeated 8 times (119 rows total).',
+    source: eyes36AltPattern,
   }
 ];
 
