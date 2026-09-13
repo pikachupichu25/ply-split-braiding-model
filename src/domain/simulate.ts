@@ -1,9 +1,14 @@
 import type { Cord, Diagnostic, Face, PatternAst, RowInstruction, Simulation, Snapshot, SplitEvent } from './types';
 
+/** The stable id of the cord that starts at a 0-based lane index: `C01`, `C02`, … */
+export function cordIdFor(index: number): string {
+  return `C${String(index + 1).padStart(2, '0')}`;
+}
+
 export function simulatePattern(pattern: PatternAst, previewRepeats: number): Simulation {
   const diagnostics: Diagnostic[] = [];
   const cords: Cord[] = pattern.colors.map((colorSymbol, index) => ({
-    id: `C${String(index + 1).padStart(2, '0')}`,
+    id: cordIdFor(index),
     colorSymbol,
   }));
   let lanes = [...cords];

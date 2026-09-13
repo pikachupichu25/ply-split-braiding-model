@@ -2,9 +2,21 @@ import type { Diagnostic, ParseResult, PatternAst, Repeat, RowInstruction } from
 
 const rowExpression = /^(\d+)\s+(\d+)\s*>\s*(\d+(?:\s*,\s*\d+)*)\s*$/;
 const repeatExpression = /^\[\s*repeat\s+(\d+)\s*-\s*(\d+)(?:\s+x\s+(\d+))?\s*\]$/i;
-const colorExpression = /^color\s*:\s*([A-Za-z]+)\s*$/i;
-const paletteExpression = /^palette\s*:\s*(.*?)\s*$/i;
+export const colorExpression = /^color\s*:\s*([A-Za-z]+)\s*$/i;
+export const paletteExpression = /^palette\s*:\s*(.*?)\s*$/i;
 const paletteEntryExpression = /^([A-Za-z])\s*=\s*(#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})|[a-z]+)$/i;
+
+/** A line that is only a comment. */
+export function isCommentLine(rawLine: string): boolean {
+  return rawLine.trimStart().startsWith('#');
+}
+
+/** The instruction part of a line: trailing `# comment` removed (hex colours kept), trimmed. */
+export function stripLineComment(rawLine: string): string {
+  return rawLine
+    .replace(/\s+#(?!(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})(?:\s|,|$)).*$/i, '')
+    .trim();
+}
 
 export function parsePattern(source: string): ParseResult {
   const diagnostics: Diagnostic[] = [];
@@ -14,10 +26,8 @@ export function parsePattern(source: string): ParseResult {
   const repeats: Repeat[] = [];
 
   source.split(/\r?\n/).forEach((rawLine, index) => {
-    if (rawLine.trimStart().startsWith('#')) return;
-    const line = rawLine
-      .replace(/\s+#(?!(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})(?:\s|,|$)).*$/i, '')
-      .trim();
+    if (isCommentLine(rawLine)) return;
+    const line = stripLineComment(rawLine);
     const lineNumber = index + 1;
     if (!line) return;
 

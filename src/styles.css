@@ -189,3 +189,7 @@ textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.1
   .method-note { order: 3; }
   .export-button { justify-self: start; }
 }
+
+/* Shared Finished chart: interactive and highlighted states used by the Colourway Designer. */
+.finished-chart--interactive .finished-split-cell { cursor: pointer; }
+.finished-split-cell.is-highlighted { stroke: #17293d; stroke-width: 3; }

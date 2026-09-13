@@ -9,12 +9,14 @@ import { finishedV2ToExpectedLayout } from './domain/exportExpectedLayout';
 import { parsePattern } from './domain/parser';
 import { simulatePattern } from './domain/simulate';
 import type { Face, Simulation, SplitEvent } from './domain/types';
+import { buildColorMap } from './domain/colourway';
 import { TooltipLayer, useTooltip } from './ui/tooltip';
 import type { Tooltip } from './ui/tooltip';
+import FinishedChart, { describeEvent } from './ui/FinishedChart';
 import CordNetworkPreview from './CordNetworkPreview';
 
-const palette = ['#d76b52', '#77b6c9', '#d3a448', '#6f8f65', '#a47aa3', '#dd8f45'];
-const savedPatternKey = 'scot-braid-studio-pattern';
+/** The studio's working draft; the Colourway Designer writes here to hand a pattern over. */
+export const savedPatternKey = 'scot-braid-studio-pattern';
 
 export default function App() {
   const [source, setSource] = useState(() => localStorage.getItem(savedPatternKey) ?? defaultSample.source);
@@ -113,6 +115,7 @@ export default function App() {
           <h1>SCOT Braid Studio</h1>
         </div>
         <div className="masthead-actions">
+          <a className="expected-layout-link" href="#/colour">Colour a pattern <span>↗</span></a>
           <a className="expected-layout-link" href="#/expected-layout">Expected layout editor <span>↗</span></a>
           <div className={`status-pill ${diagnostics.length ? 'status-pill--warning' : ''}`}>
             <span className="status-dot" />
@@ -600,7 +603,6 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
   );
   const startCords = new Map((simulation.snapshots[0]?.lanes ?? []).map((cord) => [cord.id, cord]));
   const colorFor = (cordId: string) => colors.get(startCords.get(cordId)?.colorSymbol ?? '') ?? '#d3a448';
-  const faceTransform = mirrorFace === 'back' ? `translate(${layout.width} 0) scale(-1 1)` : undefined;
   const tally = summarizeRules(layout.links);
   const exportLayout = () => {
     const document = finishedV2ToExpectedLayout(layout, {
@@ -617,64 +619,15 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
   return (
     <>
       <div className="finished-preview finished-preview--v2" ref={tooltip.containerRef}>
-        <svg viewBox={`0 0 ${layout.width} ${layout.height}`} width={layout.width * widthScale} height={layout.height * widthScale} role="img" aria-labelledby="finished-v2-title finished-v2-description">
-          <title id="finished-v2-title">Finished SCOT parallelogram chart, version two</title>
-          <desc id="finished-v2-description">One splittee-coloured parallelogram per split event, placed by the splitter’s course, the cord’s full-edge join and the half-side role change, in that order of authority. No column packing is applied, so cells in a gap column sit wherever their own runs leave them. Where a cord changes role across a shared boundary, the two diagonals extend to their intersection in the neighbouring column and the extra triangle is filled with the colour of the ribbon crossing the seam; the placed cells keep their shapes.</desc>
-          <g transform={faceTransform}>
-            {surfaces.map(({ cell, path, emergence, departure }) => {
-              const transitions = [emergence, departure].filter(transition => transition !== undefined);
-              const modelDirection = cell.event.toLane > cell.event.fromLane ? 'right' : 'left';
-              const displayDirection = mirrorFace === 'front' ? modelDirection : modelDirection === 'right' ? 'left' : 'right';
-              return (
-                <path
-                  key={cell.event.eventIndex}
-                  className={`finished-split-cell${emergence ? ' is-splitter-to-splittee' : ''}${departure ? ' is-splittee-to-splitter' : ''}`}
-                  d={path}
-                  fill={colorFor(cell.event.splitteeId)}
-                  data-event-index={cell.event.eventIndex}
-                  data-column={cell.column}
-                  data-direction={displayDirection}
-                  data-role-transition={transitions.map(transition => transition.kind).join(' ') || undefined}
-                  data-emerges-from-event={emergence?.hostEventIndex}
-                  data-departs-from-event={departure?.hostEventIndex}
-                  {...tooltip.anchorProps(`e${cell.event.eventIndex} · ${describeEvent(cell.event)} · column ${cell.column} · ${displayDirection}-leaning`)}
-                />
-              );
-            })}
-            {/* Section 7.5.2: every placed cell is drawn before any triangle,
-                so a later cell in the neighbouring column cannot erase one. */}
-            <g className="finished-transition-layer" aria-hidden="true">
-              {surfaces.flatMap(({ cell, emergence, departure }) =>
-                [emergence, departure].filter(transition => transition !== undefined).map(transition => (
-                  <g key={`${cell.event.eventIndex}-${transition.kind}`} className="finished-transition" data-event-index={cell.event.eventIndex} data-transition-kind={transition.kind} data-transition-cord={transition.cordId} data-host-cord={transition.hostCordId} data-fill-cord={transition.fillCordId}>
-                    <path d={transition.triangle} fill={colorFor(transition.fillCordId)} />
-                    <path className="finished-transition-seam" d={transition.solidEdges} />
-                    <path className="finished-transition-seam" d={transition.seam} />
-                  </g>
-                )),
-              )}
-            </g>
-          </g>
-          {showEventIds && (
-            <g className="finished-event-labels" aria-hidden="true">
-              {layout.cells.map((cell) => {
-                const centre = cell.points.reduce(
-                  (point, item) => ({ x: point.x + item.x / cell.points.length, y: point.y + item.y / cell.points.length }),
-                  { x: 0, y: 0 },
-                );
-                return (
-                  <text
-                    key={cell.event.eventIndex}
-                    x={mirrorFace === 'back' ? layout.width - centre.x : centre.x}
-                    y={centre.y}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                  >e{cell.event.eventIndex}</text>
-                );
-              })}
-            </g>
-          )}
-        </svg>
+        <FinishedChart
+          layout={layout}
+          surfaces={surfaces}
+          colorFor={colorFor}
+          mirrorFace={mirrorFace}
+          widthScale={widthScale}
+          showEventIds={showEventIds}
+          tooltip={tooltip}
+        />
         <TooltipLayer tooltip={tooltip} />
         {!simulation.events.length && <div className="empty-canvas">Your finished v2 preview will appear here.</div>}
       </div>
@@ -891,14 +844,6 @@ function appendRowLine(source: string, line: string): string {
   return lines.join('\n');
 }
 
-function buildColorMap(symbols: string[], assignments: Record<string, string>): Map<string, string> {
-  const map = new Map<string, string>();
-  symbols.forEach((symbol) => {
-    if (!map.has(symbol)) map.set(symbol, assignments[symbol] ?? palette[map.size % palette.length]);
-  });
-  return map;
-}
-
 function describeLength(
   mode: 'cycle' | 'manual',
   repeats: number,
@@ -917,10 +862,6 @@ function describeCordSegment(cordId: string, colorSymbol: string, event: SplitEv
     ? 'splitter'
     : event.splitteeId === cordId ? 'splittee' : 'passes through';
   return `e${event.eventIndex} · ${describeEvent(event)} · ${cordLabel} · ${role}`;
-}
-
-function describeEvent(event: SplitEvent): string {
-  return `${event.splitterId} splits ${event.splitteeId} · row ${event.sourceRow}, ${event.splitIndex} of ${event.splitCount}`;
 }
 
 function downloadPattern(source: string) {

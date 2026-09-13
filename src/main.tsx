@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import ExpectedLayoutEditor from './ExpectedLayoutEditor';
+import ColourwayDesigner from './ColourwayDesigner';
 import './styles.css';
 
 function AppRouter() {
@@ -13,7 +14,9 @@ function AppRouter() {
     return () => window.removeEventListener('hashchange', updateRoute);
   }, []);
 
-  return route === '#/expected-layout' ? <ExpectedLayoutEditor /> : <App />;
+  if (route === '#/expected-layout') return <ExpectedLayoutEditor />;
+  if (route === '#/colour') return <ColourwayDesigner />;
+  return <App />;
 }
 
 createRoot(document.getElementById('root')!).render(

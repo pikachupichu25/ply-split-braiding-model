@@ -1,12 +1,12 @@
-import { braid16Pattern } from './braid16';
-import { chevronPattern } from './chevron';
-import { colorBlock8Pattern } from './colorBlock8';
-import { doubleChevron24Pattern } from './doubleChevron24';
-import { wayuuFajon20Pattern } from './wayuuFajon20';
-import { arrowPattern } from './arrow';
-import { eyes36Pattern } from './eyes36';
-import { eyeletsPattern } from './eyelets';
-import { eyes36AltPattern } from './eyes36Alt';
+import { braid16Pattern } from './braid16.ts';
+import { chevronPattern } from './chevron.ts';
+import { colorBlock8Pattern } from './colorBlock8.ts';
+import { doubleChevron24Pattern } from './doubleChevron24.ts';
+import { wayuuFajon20Pattern } from './wayuuFajon20.ts';
+import { arrowPattern } from './arrow.ts';
+import { eyes36Pattern } from './eyes36.ts';
+import { eyeletsPattern } from './eyelets.ts';
+import { eyes36AltPattern } from './eyes36Alt.ts';
 
 export type SamplePatternImage = {
   /** Path under `public/`, e.g. `/expected-layouts/eyes.webp`. */

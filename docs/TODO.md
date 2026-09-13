@@ -34,7 +34,7 @@ piece of work.
 | 1.50 | Side-by-side front/back comparison | Visualization | 3 | 2 |
 | 1.50 | Print-friendly / high-contrast view | Visualization | 3 | 2 |
 | 1.50 | Expand test coverage | Engineering | 3 | 2 |
-| 1.50 | Template painting | Samples & docs | 3 | 2 |
+| 1.50 | ~~Template painting~~ (done) | Samples & docs | 3 | 2 |
 | 1.25 | Better rules/constraints for Finished view | Visualization | 5 | 4 |
 | 1.00 | Twists | Pattern language & simulation | 4 | 4 |
 | 1.00 | Finishing techniques annotation | Pattern language & simulation | 2 | 2 |
@@ -139,11 +139,15 @@ piece of work.
   current chevron/braid/eyes/arrow/color-block set — particularly ones that exercise
   wider cord counts or asymmetric repeats.
   _(Impact 2, Effort 1 → 2.00)_
-- **Template painting.** Inspired by [this coloring-page-style tutorial](https://www.youtube.com/watch?v=wBWFzKt3d7Q):
+- ~~**Template painting.** Inspired by [this coloring-page-style tutorial](https://www.youtube.com/watch?v=wBWFzKt3d7Q):
   offer a gallery of popular/well-known patterns with the row structure locked, and let
   a user just pick colors to fill it in (a palette-only editing mode layered on an
   existing pattern's `color:`/`palette:` values), instead of writing pattern rows from
-  scratch.
+  scratch.~~ **Done** — the Colourway Designer at `#/colour`
+  ([`ColourwayDesigner.tsx`](../src/ColourwayDesigner.tsx), spec in
+  [colourway-designer-spec.md](./colourway-designer-spec.md)) ships the eight-cord chevron
+  template with the Chevron and Colour block presets; further templates are the
+  follow-ups listed in the spec's section 14.
   _(Impact 3, Effort 2 → 1.50)_
 - ~~Add a short in-app "how to read this notation" panel or link, since the pattern
   format ([`scot-pattern-format-spec.md`](./scot-pattern-format-spec.md)) currently
