@@ -14,6 +14,12 @@ export type Colourway = {
 /** Swatches given to symbols in first-seen order when a pattern's palette: leaves them out. */
 export const defaultSwatches = ['#d76b52', '#77b6c9', '#d3a448', '#6f8f65', '#a47aa3', '#dd8f45'];
 
+/** The studio defaults first, then a spread of yarn-like colours. */
+export const suggestedSwatches = [
+  ...defaultSwatches,
+  '#17293d', '#f5e9cd', '#8c3b2e', '#2f5a3c', '#3b5b8a', '#e4c15a', '#b57ba6', '#7a5230', '#9aa5a8', '#c2472f',
+];
+
 /** Every symbol the notation allows, in allocation order. */
 export const slotSymbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 

@@ -145,9 +145,10 @@ piece of work.
   existing pattern's `color:`/`palette:` values), instead of writing pattern rows from
   scratch.~~ **Done** — the Colourway Designer at `#/colour`
   ([`ColourwayDesigner.tsx`](../src/ColourwayDesigner.tsx), spec in
-  [colourway-designer-spec.md](./colourway-designer-spec.md)) ships the eight-cord chevron
-  template with the Chevron and Colour block presets; further templates are the
-  follow-ups listed in the spec's section 14.
+  [colourway-designer-spec.md](./colourway-designer-spec.md)) ships the parametric
+  **Linked chevrons** template (any cord count, any number of chevrons, with the
+  eight-cord chevron as its 8 × 1 setting; spec section 6.4) and its Chevron preset.
+  Further templates are the follow-ups listed in the spec's section 14.
   _(Impact 3, Effort 2 → 1.50)_
 - ~~Add a short in-app "how to read this notation" panel or link, since the pattern
   format ([`scot-pattern-format-spec.md`](./scot-pattern-format-spec.md)) currently

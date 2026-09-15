@@ -18,7 +18,9 @@ import {
   validateColourway,
 } from '../src/domain/colourway.ts';
 import type { Colourway } from '../src/domain/colourway.ts';
-import { colourwayTemplates } from '../src/examples/colourwayTemplates.ts';
+import { checkValues, colourwayTemplates, defaultValues, validateValues } from '../src/examples/colourwayTemplates.ts';
+import { checkLinkedChevrons, linkedChevronsPattern, linkedChevronsPreset } from '../src/domain/linkedChevrons.ts';
+import { doubleChevron24Pattern } from '../src/examples/doubleChevron24.ts';
 import { samplePatterns } from '../src/examples/index.ts';
 import { arrowPattern } from '../src/examples/arrow.ts';
 import { chevronPattern } from '../src/examples/chevron.ts';
@@ -181,10 +183,114 @@ test('validateColourway accepts a stored design that fits and rejects one that d
   assert.equal(validateColourway(null, 8), undefined);
 });
 
-test('the chevron template offers the two bundled colourways on eight cords', () => {
-  const template = colourwayTemplates.find((item) => item.id === 'chevron-8');
-  assert.ok(template);
-  assert.equal(template.presets.map((preset) => preset.name).join(', '), 'Chevron, Colour block');
-  assert.ok(template.presets.every((preset) => preset.cords.length === 8));
-  assert.equal(colourwayStorageKey(template.id), 'scot-colourway:chevron-8');
+/** Repeats until the cords are back in starting order, or undefined within the limit. */
+function closesAfter(source: string, limit = 64): number | undefined {
+  const parsed = parsePattern(source);
+  assert.ok(parsed.pattern);
+  assert.equal(parsed.diagnostics.length, 0);
+  for (let repeats = 1; repeats <= limit; repeats += 1) {
+    const simulation = simulatePattern(parsed.pattern, repeats);
+    assert.equal(simulation.diagnostics.length, 0);
+    const start = simulation.snapshots[0].lanes;
+    const end = simulation.snapshots.at(-1)!.lanes;
+    if (simulation.totalRows % 2 === 0 && start.every((cord, index) => cord.id === end[index].id)) return repeats;
+  }
+  return undefined;
+}
+
+test('one linked chevron on eight cords is the classic eight-cord chevron', () => {
+  const source = linkedChevronsPattern({ cords: 8, ways: 1 });
+  assert.equal(source, `# 8-cord 1-way chevron
+color: CBAAAABC
+palette: A=#d3a448, B=#77b6c9, C=#d76b52
+
+1 8>7,6,5
+2 1>2,3,4,5
+
+[repeat 1-2]`);
+  assert.deepEqual(read(source), chevron);
+  assert.equal(closesAfter(source), 8);
+  assert.equal(closesAfter(chevronPattern), 8);
+});
+
+test('linked chevrons on 24 cords in two ways are worked like the bundled double chevron', () => {
+  const source = linkedChevronsPattern({ cords: 24, ways: 2 });
+  const rows = (pattern: string) => pattern.split('\n').filter((line) => /^\d+ /.test(line));
+  const sampleRows = rows(doubleChevron24Pattern);
+  const generated = rows(source);
+  // The right chevron matches the sample; the left one meets one lane further in so both arms are equal.
+  assert.deepEqual(generated.slice(0, 2), sampleRows.slice(0, 2));
+  assert.deepEqual(generated.slice(2), ['3 12>11,10,9,8,7', '4 1>2,3,4,5,6,7']);
+  assert.ok(source.endsWith('[repeat 1-4]'));
+  assert.equal(closesAfter(source), 24);
+  assert.equal(closesAfter(doubleChevron24Pattern), 24);
+});
+
+test('linked chevrons close after one repeat per cord and keep every chevron balanced', () => {
+  for (const params of [{ cords: 32, ways: 2 }, { cords: 32, ways: 4 }, { cords: 12, ways: 3 }, { cords: 64, ways: 8 }]) {
+    const source = linkedChevronsPattern(params);
+    assert.equal(closesAfter(source), params.cords, `${params.cords}x${params.ways}`);
+    const parsed = parsePattern(source);
+    assert.equal(parsed.pattern!.rows.length, 2 * params.ways);
+    // After one repeat each chevron has taken in two cords, one at the innermost lane of each arm.
+    const width = params.cords / params.ways;
+    const lanes = simulatePattern(parsed.pattern!, 1).snapshots.at(-1)!.lanes.map((cord) => Number(cord.id.slice(1)));
+    for (let chevron = 0; chevron < params.ways; chevron += 1) {
+      const block = lanes.slice(chevron * width, (chevron + 1) * width);
+      const entered = block.filter((id, index) => Math.abs(id - (chevron * width + index + 1)) !== 1);
+      assert.equal(entered.length, 2, `chevron ${chevron + 1} of ${params.cords}x${params.ways} takes in two cords`);
+      assert.deepEqual(entered.map((id) => block.indexOf(id) + 1), [width / 2, width / 2 + 1], `arms of chevron ${chevron + 1} of ${params.cords}x${params.ways}`);
+    }
+  }
+});
+
+test('the linked chevrons template defaults to two chevrons on 32 cords with one chevron preset', () => {
+  const source = linkedChevronsPattern({ cords: 32, ways: 2 });
+  assert.equal(source, `# 32-cord 2-way chevron
+color: CBAAAAAAAAAAAABCCBAAAAAAAAAAAABC
+palette: A=#d3a448, B=#77b6c9, C=#d76b52
+
+1 32>31,30,29,28,27,26,25
+2 16>17,18,19,20,21,22,23,24,25
+3 16>15,14,13,12,11,10,9
+4 1>2,3,4,5,6,7,8,9
+
+[repeat 1-4]`);
+  const preset = linkedChevronsPreset({ cords: 32, ways: 2 });
+  assert.equal(preset.name, 'Chevron');
+  assert.deepEqual(read(source), { cords: preset.cords, palette: preset.palette });
+  assert.equal(linkedChevronsPreset({ cords: 32, ways: 4 }).cords.join(''), 'CBAAAABC'.repeat(4));
+  assert.equal(linkedChevronsPreset({ cords: 8, ways: 2 }).cords.join(''), 'CBBCCBBC');
+
+  const template = colourwayTemplates.find((item) => item.id === 'linked-chevrons')!;
+  assert.equal(colourwayTemplates.length, 1);
+  assert.deepEqual(defaultValues(template), { cords: 32, ways: 2 });
+  const built = template.build(defaultValues(template));
+  assert.equal(built.source, source);
+  assert.equal(built.presets.length, 1);
+  assert.equal(built.presets[0].cords.length, 32);
+  assert.equal(colourwayStorageKey(template.id), 'scot-colourway:linked-chevrons');
+});
+
+test('linked chevrons refuse widths that do not give every chevron two equal arms', () => {
+  assert.equal(checkLinkedChevrons({ cords: 32, ways: 4 }), undefined);
+  assert.equal(checkLinkedChevrons({ cords: 12, ways: 3 }), undefined);
+  assert.match(checkLinkedChevrons({ cords: 30, ways: 4 })!, /multiple of 8/);
+  assert.match(checkLinkedChevrons({ cords: 28, ways: 4 })!, /multiple of 8/);
+  assert.equal(checkLinkedChevrons({ cords: 10, ways: 1 }), undefined);
+  assert.match(checkLinkedChevrons({ cords: 9, ways: 1 })!, /multiple of 2/);
+  assert.match(checkLinkedChevrons({ cords: 12, ways: 4 })!, /at least 16 cords/);
+  assert.match(checkLinkedChevrons({ cords: 8, ways: 0 })!, /at least one chevron/);
+  assert.throws(() => linkedChevronsPattern({ cords: 28, ways: 4 }), /multiple of 8/);
+
+  const template = colourwayTemplates[0];
+  assert.equal(checkValues(template, { cords: 32, ways: 4 }), undefined);
+  assert.match(checkValues(template, { cords: 100, ways: 4 })!, /from 4 to 64/);
+  assert.match(checkValues(template, { cords: 32.5, ways: 4 })!, /whole number/);
+  assert.match(checkValues(template, { cords: 28, ways: 4 })!, /multiple of 8/);
+  assert.deepEqual(validateValues(template, { cords: 24, ways: 2 }), { cords: 24, ways: 2 });
+  assert.equal(validateValues(template, { cords: 28, ways: 4 }), undefined);
+  assert.equal(validateValues(template, { cords: '32', ways: 4 }), undefined);
+  assert.equal(validateValues(template, undefined), undefined);
+  assert.equal(template.build({ cords: 24, ways: 2 }).presets[0].cords.length, 24);
 });

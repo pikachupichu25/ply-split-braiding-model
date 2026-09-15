@@ -15,7 +15,7 @@ This app focuses on **SCOT** (Single Course Oblique Twining), where a cord can s
 - Cord network view that solves the finished fabric as a spring network, with a harmonic model to compare against
 - Repeat handling, including automatic full-cycle length detection
 - Sample patterns (chevron, colour block, double chevron, braid, eyes, arrow)
-- Colourway Designer (`#/colour`): a colouring-book mode for makers — paint the cords of a locked template, pick swatches, and get the `.scot` file or open it in the studio, with no notation involved
+- Colourway Designer (`#/colour`): a colouring-book mode for makers — paint the cords of a locked template (linked chevrons on any cord count — one chevron on eight cords is the classic zig-zag), pick swatches, and get the `.scot` file or open it in the studio, with no notation involved
 - `.scot` pattern download; drafts persist locally in the browser
 
 ## Getting started

@@ -5,7 +5,6 @@ import {
   addSlot,
   applyColourway,
   colourwayStorageKey,
-  defaultSwatches,
   fillAll,
   mirror,
   mirrorIndex,
@@ -14,6 +13,7 @@ import {
   replaceSlot,
   setSwatch,
   slotCounts,
+  suggestedSwatches,
   swapSlots,
   validateColourway,
 } from './domain/colourway';
@@ -24,9 +24,8 @@ import { buildFinishedSurfaces } from './domain/finishedSurface';
 import { parsePattern } from './domain/parser';
 import { cordIdFor, simulatePattern } from './domain/simulate';
 import type { Face } from './domain/types';
-import { colourwayTemplates, defaultColourwayTemplate } from './examples/colourwayTemplates';
-import type { ColourwayTemplate } from './examples/colourwayTemplates';
-import { samplePatterns } from './examples';
+import { checkValues, colourwayTemplates, defaultColourwayTemplate, defaultValues, describeCounts, describeValues, validateValues } from './examples/colourwayTemplates';
+import type { ColourwayTemplate, TemplateValues } from './examples/colourwayTemplates';
 import { isHex, normaliseColourway, readableTextOn } from './ui/colour';
 import { downloadTextFile, safeFileName } from './ui/download';
 import FinishedChart from './ui/FinishedChart';
@@ -34,25 +33,24 @@ import './colourwayDesigner.css';
 
 const theta = 30;
 const tipAngle = 30;
-/** The studio defaults first, then a spread of yarn-like colours. */
-const suggestedSwatches = [
-  ...defaultSwatches,
-  '#17293d', '#f5e9cd', '#8c3b2e', '#2f5a3c', '#3b5b8a', '#e4c15a', '#b57ba6', '#7a5230', '#9aa5a8', '#c2472f',
-];
 
-type StoredDesign = { presetName: string | null; colourway: Colourway };
+type StoredDesign = { presetName: string | null; colourway: Colourway; values: TemplateValues };
+type Choice = { template: ColourwayTemplate; values: TemplateValues };
 type PaintGesture = { before: Colourway; painted: Set<number>; changed: boolean };
+/** Thumbnails show this much of a long cycle; the eight-cord chevron's 16 rows fit whole. */
+const thumbnailRows = 64;
 
 export default function ColourwayDesigner() {
-  const [templateId] = useState(defaultColourwayTemplate.id);
-  const template = colourwayTemplates.find((item) => item.id === templateId) ?? defaultColourwayTemplate;
-  const sample = samplePatterns.find((item) => item.id === template.sampleId) ?? samplePatterns[0];
-  const cordCount = template.presets[0].cords.length;
+  const [choice, setChoice] = useState<Choice>(() => ({ template: defaultColourwayTemplate, values: defaultValues(defaultColourwayTemplate) }));
+  const { template, values } = choice;
+  const built = useMemo(() => template.build(values), [template, values]);
+  const presets = built.presets;
+  const cordCount = presets[0].cords.length;
 
   const [screen, setScreen] = useState<'pick' | 'paint'>('pick');
   const [presetName, setPresetName] = useState<string | null>(null);
-  const [colourway, setColourway] = useState<Colourway>(() => normaliseColourway(template.presets[0]));
-  const [activeSymbol, setActiveSymbol] = useState(template.presets[0].cords[0]);
+  const [colourway, setColourway] = useState<Colourway>(() => normaliseColourway(presets[0]));
+  const [activeSymbol, setActiveSymbol] = useState(presets[0].cords[0]);
   const [editingSymbol, setEditingSymbol] = useState<string | null>(null);
   const [face, setFace] = useState<Face>('front');
   const [lengthMultiplier, setLengthMultiplier] = useState<1 | 2>(1);
@@ -60,7 +58,6 @@ export default function ColourwayDesigner() {
   const [highlightCordId, setHighlightCordId] = useState<string | null>(null);
   const [focusedCord, setFocusedCord] = useState(0);
   const [notice, setNotice] = useState('');
-  const [resumable] = useState<StoredDesign | null>(() => loadStoredDesign(template));
   const undoStack = useRef<Colourway[]>([]);
   const redoStack = useRef<Colourway[]>([]);
   const gestureRef = useRef<PaintGesture | null>(null);
@@ -70,13 +67,13 @@ export default function ColourwayDesigner() {
   const latest = useRef(colourway);
   latest.current = colourway;
 
-  const structure = useMemo(() => buildStructure(sample.source, lengthMultiplier), [sample.source, lengthMultiplier]);
-  const baseStructure = useMemo(() => (lengthMultiplier === 1 ? structure : buildStructure(sample.source, 1)), [sample.source, lengthMultiplier, structure]);
+  const structure = useMemo(() => buildStructure(built.source, lengthMultiplier), [built.source, lengthMultiplier]);
   const colorFor = (cordId: string) => colourway.palette[colourway.cords[Number(cordId.slice(1)) - 1]] ?? '#d3a448';
-  const source = useMemo(() => applyColourway(sample.source, colourway), [sample.source, colourway]);
+  const source = useMemo(() => applyColourway(built.source, colourway), [built.source, colourway]);
   const counts = slotCounts(colourway);
   const symbols = [...counts.keys()];
-  const activePreset = template.presets.find((preset) => preset.name === presetName);
+  const cordGroups = stripGroups(cordCount, built.group);
+  const activePreset = presets.find((preset) => preset.name === presetName);
   const unchanged = activePreset !== undefined && sameColourway(normaliseColourway(activePreset), colourway);
 
   const pushHistory = (before: Colourway) => {
@@ -106,11 +103,12 @@ export default function ColourwayDesigner() {
     setNotice('Redid the change');
   };
 
-  const load = (design: Colourway, name: string | null, message: string) => {
+  const load = (next: Choice, design: Colourway, name: string | null, message: string) => {
     undoStack.current = [];
     redoStack.current = [];
     // The working design is the user's own: the preset it started from is tracked separately.
     const { name: _presetName, ...working } = normaliseColourway(design);
+    setChoice(next);
     setColourway(working);
     setPresetName(name);
     setActiveSymbol(design.cords[0]);
@@ -122,9 +120,9 @@ export default function ColourwayDesigner() {
 
   useEffect(() => {
     if (screen !== 'paint') return;
-    const stored: StoredDesign = { presetName, colourway };
+    const stored: StoredDesign = { presetName, colourway, values };
     localStorage.setItem(colourwayStorageKey(template.id), JSON.stringify(stored));
-  }, [screen, presetName, colourway, template.id]);
+  }, [screen, presetName, colourway, template.id, values]);
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -197,6 +195,11 @@ export default function ColourwayDesigner() {
     setNotice(painted.length === 1
       ? `Cord ${painted[0] + 1} painted ${activeSymbol}`
       : `Cords ${painted.map((index) => index + 1).join(', ')} painted ${activeSymbol}`);
+  };
+  /** Bring a cord painted from the braid into view; the strip may be many rows below a phone's pinned preview. */
+  const revealCord = (index: number) => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    stripRef.current?.querySelector(`[data-cord="${index}"]`)?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
   };
   const paintFromKeyboard = (index: number, symbol: string) => {
     commit(paintCords(colourway, targetsFor(index), symbol), `Cord ${index + 1} painted ${symbol}`);
@@ -293,7 +296,8 @@ export default function ColourwayDesigner() {
   };
   const download = () => {
     const label = unchanged && presetName ? presetName : 'custom';
-    downloadTextFile(`${template.id}-${safeFileName(label)}.scot`, source);
+    const variant = template.params.map((param) => `-${values[param.key]}`).join('');
+    downloadTextFile(`${template.id}${variant}-${safeFileName(label)}.scot`, source);
     setNotice('Downloaded the pattern');
   };
 
@@ -309,31 +313,7 @@ export default function ColourwayDesigner() {
         </header>
         <section className="cw-pick" aria-label="Choose a template and a starting colourway">
           <p className="cw-lede">Pick a braid whose structure is already worked out, then choose the colours yourself. No notation needed — paint the cords and watch the braid change.</p>
-          {colourwayTemplates.map((item) => (
-            <article key={item.id} className="cw-template" aria-labelledby={`template-${item.id}`}>
-              <div className="cw-template-heading">
-                <p className="cw-kicker">Template</p>
-                <h2 id={`template-${item.id}`}>{item.name}</h2>
-                <p>{item.description}</p>
-              </div>
-              <div className="cw-presets">
-                {resumable && item.id === template.id && (
-                  <button type="button" className="cw-preset cw-preset--resume" onClick={() => load(resumable.colourway, resumable.presetName, 'Continued your saved colourway')}>
-                    <span className="cw-thumb"><PresetThumbnail structure={baseStructure} colourway={resumable.colourway} idPrefix="thumb-resume" /></span>
-                    <span className="cw-preset-name">Continue where you left off</span>
-                    <span className="cw-preset-note">Saved in this browser{resumable.presetName ? ` · started from ${resumable.presetName}` : ''}</span>
-                  </button>
-                )}
-                {item.presets.map((preset, index) => (
-                  <button key={preset.name ?? index} type="button" className="cw-preset" onClick={() => load(preset, preset.name ?? null, `Loaded the ${preset.name} colourway`)}>
-                    <span className="cw-thumb"><PresetThumbnail structure={baseStructure} colourway={preset} idPrefix={`thumb-${item.id}-${index}`} /></span>
-                    <span className="cw-preset-name">{preset.name}</span>
-                    <span className="cw-preset-note">{preset.cords.join('')}</span>
-                  </button>
-                ))}
-              </div>
-            </article>
-          ))}
+          {colourwayTemplates.map((item) => <TemplateCard key={item.id} template={item} onLoad={load} />)}
         </section>
         <p className="cw-live" aria-live="polite">{notice}</p>
       </main>
@@ -350,6 +330,7 @@ export default function ColourwayDesigner() {
         <div className="cw-title">
           <p className="cw-kicker">SCOT Braid Studio · colouring book</p>
           <h1>{template.name}</h1>
+          {template.params.length > 0 && <p className="cw-values">{describeValues(template, values)}</p>}
         </div>
         <div className="cw-header-actions">
           <button type="button" className="cw-quiet-button" onClick={() => setScreen('pick')}>Change colourway</button>
@@ -385,10 +366,11 @@ export default function ColourwayDesigner() {
                 setHighlightCordId(cell.event.splitteeId);
                 setFocusedCord(index);
                 commit(paintCords(colourway, targetsFor(index), activeSymbol), `Cord ${index + 1} painted ${activeSymbol}`);
+                revealCord(index);
               }}
             />
           </div>
-          <p className="cw-stage-note">{structure.repeats} repeats · {structure.simulation.totalRows} rows · tap the braid to paint the cord under your finger with {activeSymbol}</p>
+          <p className="cw-stage-note"><b>{structure.repeats} repeats · {structure.simulation.totalRows} rows.</b> Tap the braid to paint the cord under your finger with {activeSymbol}.</p>
         </div>
 
         <div className="cw-paintbar">
@@ -409,56 +391,67 @@ export default function ColourwayDesigner() {
             onPointerUp={endGesture}
             onPointerCancel={endGesture}
           >
-            {colourway.cords.map((symbol, index) => {
-              const swatch = colourway.palette[symbol] ?? '#d3a448';
-              const cordId = cordIdFor(index);
-              return (
-                <button
-                  key={cordId}
-                  type="button"
-                  className={`cw-cord${highlightCordId === cordId ? ' is-highlighted' : ''}`}
-                  data-cord={index}
-                  tabIndex={index === focusedCord ? 0 : -1}
-                  aria-label={`Cord ${index + 1}, colour ${symbol}`}
-                  style={{ backgroundColor: swatch, color: readableTextOn(swatch) }}
-                  onPointerDown={(event) => beginGesture(index, event)}
-                  onClick={(event) => { if (event.detail === 0) paintFromKeyboard(index, activeSymbol); }}
-                  onFocus={() => setFocusedCord(index)}
-                >
-                  <span className="cw-cord-number">{index + 1}</span>
-                  <span className="cw-cord-letter">{symbol}</span>
-                </button>
-              );
-            })}
+            {cordGroups.map((group) => (
+              <div key={group.start} className="cw-strip-group" role="group" aria-label={group.name ?? 'All cords'}>
+                {group.name && <span className="cw-strip-group-name">{group.name} <span>· cords {group.start + 1}–{group.start + group.size}</span></span>}
+                <div className="cw-strip-cords">
+                  {colourway.cords.slice(group.start, group.start + group.size).map((symbol, offset) => {
+                    const index = group.start + offset;
+                    const swatch = colourway.palette[symbol] ?? '#d3a448';
+                    const cordId = cordIdFor(index);
+                    return (
+                      <button
+                        key={cordId}
+                        type="button"
+                        className={`cw-cord${highlightCordId === cordId ? ' is-highlighted' : ''}`}
+                        data-cord={index}
+                        tabIndex={index === focusedCord ? 0 : -1}
+                        aria-label={`Cord ${index + 1}, colour ${symbol}`}
+                        style={{ backgroundColor: swatch, color: readableTextOn(swatch) }}
+                        onPointerDown={(event) => beginGesture(index, event)}
+                        onClick={(event) => { if (event.detail === 0) paintFromKeyboard(index, activeSymbol); }}
+                        onFocus={() => setFocusedCord(index)}
+                      >
+                        <span className="cw-cord-number">{index + 1}</span>
+                        <span className="cw-cord-letter">{symbol}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="cw-palette-heading">
-            <p className="cw-kicker">Colours</p>
-            <span className="cw-palette-hint">Painting with <b>{activeSymbol}</b> · tap it again to edit</span>
-          </div>
-          <div className="cw-palette" onKeyDown={handlePaletteKeyDown}>
-            {symbols.map((symbol) => {
-              const swatch = colourway.palette[symbol];
-              const count = counts.get(symbol) ?? 0;
-              return (
-                <button
-                  key={symbol}
-                  type="button"
-                  className={`cw-slot${symbol === activeSymbol ? ' is-active' : ''}${symbol === editingSymbol ? ' is-editing' : ''}`}
-                  data-slot={symbol}
-                  aria-pressed={symbol === activeSymbol}
-                  aria-label={`Colour ${symbol}, ${swatch}, ${count === 1 ? '1 cord' : `${count} cords`}${symbol === activeSymbol ? ', active' : ''}`}
-                  onClick={() => chooseSlot(symbol)}
-                >
-                  <span className="cw-slot-swatch" style={{ backgroundColor: swatch, color: readableTextOn(swatch) }}>{symbol}</span>
-                  <span className="cw-slot-count">{count ? `× ${count}` : 'unused'}</span>
-                </button>
-              );
-            })}
-            <button type="button" className="cw-slot cw-slot--add" onClick={addColour} disabled={symbols.length >= 26} title={symbols.length >= 26 ? 'All 26 letters are in use' : 'Add a colour'}>
-              <span className="cw-slot-swatch">+</span>
-              <span className="cw-slot-count">Add</span>
-            </button>
+          <div className="cw-palette-bar">
+            <div className="cw-palette-heading">
+              <p className="cw-kicker">Colours</p>
+              <span className="cw-palette-hint">Painting with <b>{activeSymbol}</b> · tap it again to edit</span>
+            </div>
+            <div className="cw-palette" onKeyDown={handlePaletteKeyDown}>
+              {symbols.map((symbol) => {
+                const swatch = colourway.palette[symbol];
+                const count = counts.get(symbol) ?? 0;
+                return (
+                  <button
+                    key={symbol}
+                    type="button"
+                    className={`cw-slot${symbol === activeSymbol ? ' is-active' : ''}${symbol === editingSymbol ? ' is-editing' : ''}`}
+                    data-slot={symbol}
+                    aria-pressed={symbol === activeSymbol}
+                    aria-label={`Colour ${symbol}, ${swatch}, ${count === 1 ? '1 cord' : `${count} cords`}${symbol === activeSymbol ? ', active' : ''}`}
+                    onClick={() => chooseSlot(symbol)}
+                  >
+                    <span className="cw-slot-swatch" style={{ backgroundColor: swatch, color: readableTextOn(swatch) }}>{symbol}</span>
+                    <span className="cw-slot-count">{count ? `× ${count}` : 'unused'}</span>
+                  </button>
+                );
+              })}
+              <button type="button" className="cw-slot cw-slot--add" onClick={addColour} disabled={symbols.length >= 26} title={symbols.length >= 26 ? 'All 26 letters are in use' : 'Add a colour'}>
+                <span className="cw-slot-swatch">+</span>
+                <span className="cw-slot-count">Add</span>
+              </button>
+            </div>
+            <p className="cw-live" aria-live="polite">{notice}</p>
           </div>
         </div>
 
@@ -532,7 +525,6 @@ export default function ColourwayDesigner() {
           <button type="button" className="cw-icon-button" aria-label="Undo" title="Undo (⌘Z)" disabled={!undoStack.current.length} onClick={undo}>↶</button>
           <button type="button" className="cw-icon-button" aria-label="Redo" title="Redo (⇧⌘Z)" disabled={!redoStack.current.length} onClick={redo}>↷</button>
         </div>
-        <p className="cw-live" aria-live="polite">{notice}</p>
         <div className="cw-footer-actions">
           <button type="button" className="cw-quiet-button" onClick={download}>Download .scot <span aria-hidden="true">↓</span></button>
           <button type="button" className="cw-primary-button" onClick={openInStudio}>Open in studio <span aria-hidden="true">↗</span></button>
@@ -647,6 +639,76 @@ function SlotEditor({ symbol, swatch, count, canRemove, others, onSwatch, onRemo
   );
 }
 
+function TemplateCard({ template, onLoad }: {
+  template: ColourwayTemplate;
+  onLoad: (choice: Choice, design: Colourway, name: string | null, message: string) => void;
+}) {
+  const [stored] = useState(() => loadStoredDesign(template));
+  // The fields always open at the template's defaults; a saved design carries its own values and resumes with them.
+  const [fields, setFields] = useState<Record<string, string>>(() =>
+    Object.fromEntries(template.params.map((param) => [param.key, String(defaultValues(template)[param.key])])));
+  const values = useMemo<TemplateValues>(() => Object.fromEntries(template.params.map((param) => [param.key, Number(fields[param.key]) ])), [template, fields]);
+  const problem = checkValues(template, values);
+  const built = useMemo(() => (problem ? undefined : template.build(values)), [template, values, problem]);
+  const structure = useMemo(() => built && buildStructure(built.source, 1, thumbnailRows), [built]);
+  const storedStructure = useMemo(() => stored && buildStructure(template.build(stored.values).source, 1, thumbnailRows), [template, stored]);
+  const choice: Choice = { template, values };
+
+  return (
+    <article className="cw-template" aria-labelledby={`template-${template.id}`}>
+      <div className="cw-template-heading">
+        <p className="cw-kicker">Template</p>
+        <h2 id={`template-${template.id}`}>{template.name}</h2>
+        <p>{template.description}</p>
+      </div>
+      {template.params.length > 0 && (
+        <div className="cw-params">
+          {template.params.map((param) => (
+            <label key={param.key} className="cw-param">
+              <span>{param.label}</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={param.min}
+                max={param.max}
+                step={param.step}
+                value={fields[param.key]}
+                aria-describedby={problem ? `template-${template.id}-problem` : undefined}
+                aria-invalid={Boolean(problem)}
+                onChange={(event) => setFields((current) => ({ ...current, [param.key]: event.target.value }))}
+              />
+            </label>
+          ))}
+          {problem
+            ? <p className="cw-param-problem" id={`template-${template.id}-problem`} role="alert">{problem}</p>
+            : structure && <p className="cw-param-note">{structure.cycle ? `Closes after ${structure.cycle.repeats} repeats · ${structure.cycle.rows} rows` : 'Does not close within 64 repeats'}</p>}
+        </div>
+      )}
+      {built && structure && (
+        <div className="cw-presets">
+          {stored && storedStructure && (
+            <button type="button" className="cw-preset cw-preset--resume" onClick={() => onLoad({ template, values: stored.values }, stored.colourway, stored.presetName, 'Continued your saved colourway')}>
+              <span className="cw-thumb"><PresetThumbnail structure={storedStructure} colourway={stored.colourway} idPrefix={`thumb-${template.id}-resume`} /></span>
+              <span className="cw-preset-name">Continue where you left off</span>
+              <span className="cw-preset-note">
+                {template.params.length > 0 ? `${describeValues(template, stored.values)} · ` : ''}
+                saved in this browser{stored.presetName ? ` · started from ${stored.presetName}` : ''}
+              </span>
+            </button>
+          )}
+          {built.presets.map((preset, index) => (
+            <button key={preset.name ?? index} type="button" className="cw-preset" onClick={() => onLoad(choice, preset, preset.name ?? null, `Loaded the ${preset.name} colourway`)}>
+              <span className="cw-thumb"><PresetThumbnail structure={structure} colourway={preset} idPrefix={`thumb-${template.id}-${index}`} /></span>
+              <span className="cw-preset-name">{preset.name}</span>
+              <span className="cw-preset-note">{describeCounts(preset)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
 function PresetThumbnail({ structure, colourway, idPrefix }: { structure: Structure; colourway: Colourway; idPrefix: string }) {
   const colorFor = (cordId: string) => colourway.palette[colourway.cords[Number(cordId.slice(1)) - 1]] ?? '#d3a448';
   return (
@@ -665,11 +727,12 @@ function PresetThumbnail({ structure, colourway, idPrefix }: { structure: Struct
 type Structure = ReturnType<typeof buildStructure>;
 
 /** Rows never change in the designer, so the geometry is built once per template and length. */
-function buildStructure(source: string, multiplier: 1 | 2) {
+function buildStructure(source: string, multiplier: 1 | 2, maxRows?: number) {
   const parsed = parsePattern(source);
   if (!parsed.pattern) throw new Error('The template pattern does not parse.');
   const cycle = findFullCycle(parsed.pattern);
-  const repeats = (cycle?.repeats ?? 4) * multiplier;
+  let repeats = (cycle?.repeats ?? 4) * multiplier;
+  if (cycle && maxRows) repeats = Math.min(repeats, Math.max(1, Math.floor(maxRows / (cycle.rows / cycle.repeats))));
   const simulation = simulatePattern(parsed.pattern, repeats);
   const layout = buildFinishedLayoutV2(simulation, { theta, tipAngle });
   const surfaces = buildFinishedSurfaces(layout.cells, { enabled: true });
@@ -680,17 +743,32 @@ function loadStoredDesign(template: ColourwayTemplate): StoredDesign | null {
   try {
     const raw = localStorage.getItem(colourwayStorageKey(template.id));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { presetName?: unknown; colourway?: unknown };
-    const colourway = validateColourway(parsed.colourway, template.presets[0].cords.length);
+    const parsed = JSON.parse(raw) as { presetName?: unknown; colourway?: unknown; values?: unknown };
+    const values = validateValues(template, parsed.values);
+    if (!values) {
+      console.warn('Ignoring a saved colourway whose settings no longer fit the template.');
+      return null;
+    }
+    const colourway = validateColourway(parsed.colourway, template.build(values).presets[0].cords.length);
     if (!colourway) {
       console.warn('Ignoring a saved colourway that no longer fits the template.');
       return null;
     }
-    return { presetName: typeof parsed.presetName === 'string' ? parsed.presetName : null, colourway };
+    return { presetName: typeof parsed.presetName === 'string' ? parsed.presetName : null, colourway, values };
   } catch (error) {
     console.warn('Ignoring an unreadable saved colourway.', error);
     return null;
   }
+}
+
+/** The strip drawn in the template's repeating units, or as one unlabelled run when there is only one. */
+function stripGroups(cordCount: number, group?: { size: number; label: string }): { start: number; size: number; name?: string }[] {
+  if (!group || group.size <= 0 || group.size >= cordCount) return [{ start: 0, size: cordCount }];
+  const groups: { start: number; size: number; name?: string }[] = [];
+  for (let start = 0, number = 1; start < cordCount; start += group.size, number += 1) {
+    groups.push({ start, size: Math.min(group.size, cordCount - start), name: `${group.label} ${number}` });
+  }
+  return groups;
 }
 
 function sameColourway(a: Colourway, b: Colourway): boolean {
