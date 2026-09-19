@@ -117,6 +117,7 @@ export default function App() {
         <div className="masthead-actions">
           <a className="expected-layout-link" href="#/colour">Colour a pattern <span>↗</span></a>
           <a className="expected-layout-link" href="#/expected-layout">Expected layout editor <span>↗</span></a>
+          <a className="expected-layout-link" href="#/models">How the models work <span>↗</span></a>
           <div className={`status-pill ${diagnostics.length ? 'status-pill--warning' : ''}`}>
             <span className="status-dot" />
             {status}

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import ExpectedLayoutEditor from './ExpectedLayoutEditor';
 import ColourwayDesigner from './ColourwayDesigner';
+import ModelsExplainer from './ModelsExplainer';
 import './styles.css';
 
 function AppRouter() {
@@ -16,6 +17,7 @@ function AppRouter() {
 
   if (route === '#/expected-layout') return <ExpectedLayoutEditor />;
   if (route === '#/colour') return <ColourwayDesigner />;
+  if (route === '#/models' || route.startsWith('#/models#')) return <ModelsExplainer />;
   return <App />;
 }
 

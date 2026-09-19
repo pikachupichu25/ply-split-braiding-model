@@ -82,6 +82,7 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
       <label><input type="checkbox" checked={showIds} onChange={e => setShowIds(e.target.checked)} />Split IDs</label>
       {referenceImage && <label><input type="checkbox" checked={compare} onChange={e => setCompare(e.target.checked)} />Compare {referenceName} photo</label>}
       <label><input type="checkbox" checked={photoPalette} onChange={e => setPhotoPalette(e.target.checked)} />Photo colours (A–C)</label>
+      <a className="network-explainer-link" href="#/models">How the models work ↗</a>
     </div>
     <div className="network-sliders">
       <label>Length / width <input aria-label="Network elongation" type="range" min="0.6" max="2.4" step="0.05" value={elongation} onChange={e => setElongation(Number(e.target.value))} /><output>{elongation.toFixed(2)}</output></label>
