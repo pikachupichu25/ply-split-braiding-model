@@ -12,8 +12,8 @@ This app focuses on **SCOT** (Single Course Oblique Twining), where a cord can s
 - Click-to-build: click a lane, then a target lane, to append a split row
 - Structural simulation using stable cord identities (not just final lane order)
 - Multiple render views: braid trace, finished chart (v1/v2/dev), front and back faces
-- Cord network view that solves the finished fabric as a spring network, with a harmonic model to compare against
-- Model explainer (`#/models`): how the harmonic and spring models work, for readers with first-year maths and physics, with interactive figures that run the app's own solvers on the chevron sample
+- Cord network view that solves the finished fabric with an *elastic* cord-network model (rest-length springs, no frame), with a *framed* model (harmonic embedding in a fixed frame) to compare against
+- Model explainer (`#/models`): how the framed and elastic models work, for readers with first-year maths and physics, with interactive figures that run the app's own solvers on the chevron sample
 - Repeat handling, including automatic full-cycle length detection
 - Sample patterns (chevron, colour block, double chevron, braid, eyes, arrow)
 - Colourway Designer (`#/colour`): a colouring-book mode for makers — paint the cords of a locked template (linked chevrons on any cord count — one chevron on eight cords is the classic zig-zag), pick swatches, and get the `.scot` file or open it in the studio, with no notation involved

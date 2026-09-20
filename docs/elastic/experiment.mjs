@@ -1,7 +1,7 @@
-// Research experiment only: spring-network layout of the split graph (README.md §4–§5).
+// Research experiment only: elastic-model layout of the split graph (README.md §4–§5).
 // No imports from any finished-layout implementation; nothing in the app changes.
 // Run from the repository root:
-//   node --experimental-strip-types docs/spring/experiment.mjs [eyes|chevron] [key=value ...]
+//   node --experimental-strip-types docs/elastic/experiment.mjs [eyes|chevron] [key=value ...]
 // Keys: source (a .scot file for a custom sample name), tag (output filename infix), blocks, seeds, iterations, theta (degrees), pitch, dMin, wBend, wCross, wRep, wOrient,
 //       learningRate, alphaMin, polishSteps, polishDt, polishDamping, terminalLength, terminalWeight, turnLength, orientMin, tailRepulsion.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -41,7 +41,7 @@ if (!parsed.pattern || parsed.diagnostics.length) throw new Error(`Parse failed:
 const simulation = simulatePattern(parsed.pattern, profile.blocks);
 if (simulation.diagnostics.length) throw new Error(`Simulation failed: ${JSON.stringify(simulation.diagnostics)}`);
 
-// ---------------------------------------------------------------- graph (astra construction + midpoints)
+// ---------------------------------------------------------------- graph (framed construction + midpoints)
 function buildGraph(simulation, profile) {
   const cords = simulation.snapshots[0].lanes, events = simulation.events, n = cords.length;
   const nodes = [], edges = [];
@@ -85,7 +85,7 @@ function buildGraph(simulation, profile) {
     const leftId = e.lanesBefore[gap - 1].id, rightId = e.lanesBefore[gap].id;
     const port = cordId => { const p = paths.get(cordId), k = p.full.indexOf(i); return { prev: p.full[k - 1], next: p.full[k + 1] }; };
     const a = port(leftId), b = port(rightId);
-    // Cyclic port order a-in, b-in, a-out, b-out (astra). Positive sector areas in the wiring frame.
+    // Cyclic port order a-in, b-in, a-out, b-out (framed). Positive sector areas in the wiring frame.
     return { node: i, event: e, gap, outer: gap === 1 || gap === n - 1, a, b, ports: [a.prev, b.prev, a.next, b.next], splittee: port(e.splitteeId) };
   });
   // Straightness triples over the full chain, skipped across any segment where the cord reverses direction.
@@ -451,7 +451,7 @@ for (let s = 1; s <= profile.randomSeeds; s++) {
 writeFileSync(out('surface.svg'), svg(graphOf, wiring.pos));
 writeFileSync(out('structure.svg'), svg(graphOf, wiring.pos, { structure: true, conflicts: segmentCrossings(graphOf, wiring.pos), violated: wiringMetrics.orientation.violated }));
 const report = {
-  description: 'Spring-network layout experiment (docs/spring/README.md). Graph from the astra construction plus one midpoint per junction–junction edge. Not a photo-validated result.',
+  description: 'Elastic-model layout experiment (docs/elastic/README.md). Graph from the framed construction plus one midpoint per junction–junction edge. Not a photo-validated result.',
   sample: sampleName, profile: { ...profile, thetaDeg: +(profile.theta * 180 / Math.PI).toFixed(2) },
   graph: { cords: graphOf.n, events: graphOf.events.length, nodes: graphOf.nodes.length, edges: graphOf.edges.length, selvedgeTurns: graphOf.edges.filter(e => e.turn).length / 2, reversalSegments: graphOf.reversals.size / 2, levelNodes: graphOf.level.length, scaffoldPairs: graphOf.level.length * (graphOf.level.length - 1) / 2, bends: graphOf.bends.length, crosses: graphOf.crosses.length, digons: graphOf.parallel.length, unusedCords: [...graphOf.paths.values()].filter(p => p.unused).map(p => p.cord.id) },
   runs,

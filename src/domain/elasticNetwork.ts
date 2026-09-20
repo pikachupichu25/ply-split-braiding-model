@@ -3,7 +3,7 @@ import { findCurveCrossings, junctionPatch, portConflicts, validate } from './co
 import type { CordCurve, CordNetworkLayout, NetworkCord, NetworkJunction, NetworkPoint } from './cordNetwork.ts';
 
 /**
- * Spring-network layout of the split graph (docs/spring/README.md).
+ * Elastic model: spring-network layout of the split graph with real rest lengths (docs/elastic/README.md).
  *
  * Every cord segment is a spring at its pitch length, second-neighbour springs keep cords straight through a
  * split, port-pair springs set the crossing angle, a short-range repulsion keeps cords a diameter apart, and
@@ -11,7 +11,7 @@ import type { CordCurve, CordNetworkLayout, NetworkCord, NetworkJunction, Networ
  * annealed away. The shape is then a minimum of the physical energy, reached by under-damped dynamics.
  * Geometry is in cord diameters. Colours, faces, and row numbers never enter it.
  */
-export type SpringNetworkOptions = {
+export type ElasticNetworkOptions = {
   /** Axial/lateral ratio of a mesh cell, cot θ; cords cross at 2θ. */
   elongation?: number;
   /** Rendered thickness in cord diameters. The geometry is always packed at one diameter. */
@@ -30,7 +30,7 @@ export type SpringNetworkOptions = {
   learningRate?: number;
   alphaMin?: number;
   /** Graph-distance cutoff for scaffold pairs, in diameters. The wiring seed is already planar, so a
-   * local scaffold unfolds it; the full all-pairs form of docs/spring is slower and no more accurate. */
+   * local scaffold unfolds it; the full all-pairs form of docs/elastic is slower and no more accurate. */
   scaffoldRadius?: number;
   polishSteps?: number;
   polishDt?: number;
@@ -39,9 +39,9 @@ export type SpringNetworkOptions = {
   tolerance?: number;
 };
 /** Called during the solve. `build` produces the current layout on demand so callers can throttle. */
-export type SpringProgress = (progress: number, build: () => CordNetworkLayout) => void;
+export type ElasticProgress = (progress: number, build: () => CordNetworkLayout) => void;
 
-type Profile = Required<SpringNetworkOptions> & { theta: number };
+type Profile = Required<ElasticNetworkOptions> & { theta: number };
 type Spring = { a: number; b: number; rest: number; w: number };
 type Graph = {
   n: number; cords: Cord[]; events: SplitEvent[]; count: number;
@@ -59,7 +59,7 @@ const clamp = (v: number | undefined, fallback: number, min: number, max: number
 const KEY = 1048576;
 const pairKey = (i: number, j: number) => i < j ? i * KEY + j : j * KEY + i;
 
-export function resolveSpringProfile(options: SpringNetworkOptions = {}): Profile {
+export function resolveElasticProfile(options: ElasticNetworkOptions = {}): Profile {
   const elongation = clamp(options.elongation, 1.35, 0.6, 2.4);
   const theta = Math.atan(1 / elongation);
   const pitch = clamp(options.pitch, 1 / Math.sin(2 * theta), 0.5, 3);
@@ -84,8 +84,8 @@ export function resolveSpringProfile(options: SpringNetworkOptions = {}): Profil
   };
 }
 
-export function buildSpringNetwork(simulation: Simulation, options: SpringNetworkOptions = {}, onProgress?: SpringProgress): CordNetworkLayout {
-  const p = resolveSpringProfile(options);
+export function buildElasticNetwork(simulation: Simulation, options: ElasticNetworkOptions = {}, onProgress?: ElasticProgress): CordNetworkLayout {
+  const p = resolveElasticProfile(options);
   const cords = simulation.snapshots[0]?.lanes ?? [];
   const n = cords.length;
   const empty = (diagnostics: string[]): CordNetworkLayout => ({
@@ -324,7 +324,7 @@ function wiringSeed(g: Graph, p: Profile): Float64Array {
 
 type SolveResult = { pos: Float64Array; iterations: number; steps: number; converged: boolean; residual: number; learningRate: number };
 
-function solve(g: Graph, p: Profile, onProgress?: SpringProgress): SolveResult {
+function solve(g: Graph, p: Profile, onProgress?: ElasticProgress): SolveResult {
   const T = p.iterations, grad = new Float64Array(2 * g.count), skin = 0.5;
   let eta = p.learningRate, attempts = 0, pos = wiringSeed(g, p), neighbours = neighbourList(g, p, pos, skin);
   const forces = (alpha: number, wOrient: number, withScaffold: boolean) => {

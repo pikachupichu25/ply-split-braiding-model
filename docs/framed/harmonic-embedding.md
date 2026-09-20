@@ -1,6 +1,6 @@
 # Physics behind the harmonic seed
 
-Companion to [Proposed system](system.md) §3 and its implementation, [`harmonicSolve`](../../src/domain/cordNetwork.ts). This covers only the linear seed step — the "positive-weight harmonic embedding" used to produce a guaranteed-planar starting layout before the nonlinear fit in system.md §4. It is not a physical material model; treat it as a topology-safe initialiser, per system.md:119.
+Companion to [Proposed system](system.md) §3 and its implementation, [`harmonicSolve`](../../src/domain/framedNetwork.ts) in the framed model. This covers only the linear seed step — the "positive-weight harmonic embedding" used to produce a guaranteed-planar starting layout before the nonlinear fit in system.md §4. It is not a physical material model; treat it as a topology-safe initialiser, per system.md:119.
 
 ## 1. What "harmonic" means here
 
@@ -54,7 +54,7 @@ Every one of these gaps is filled by a later, non-linear step. The harmonic solv
 
 ## 5. How the code solves it
 
-[`harmonicSolve`](../../src/domain/cordNetwork.ts) assembles nothing but a matrix-vector product (`multiply`) representing `L x`, where `L` is the graph Laplacian restricted to free vertices: its diagonal is vertex degree, its off-diagonal action is "subtract each neighbour's current value." It solves `L x = b` — one solve for the x-coordinates, one for y, since the energy has no cross term between coordinates and so separates exactly — using Jacobi-preconditioned conjugate gradient (the `z = r / degree` step is the Jacobi/diagonal preconditioner). This avoids ever building a dense matrix: each CG iteration costs one pass over the edge list, and convergence for a mesh this size and this well-conditioned is fast relative to the vertex count.
+[`harmonicSolve`](../../src/domain/framedNetwork.ts) assembles nothing but a matrix-vector product (`multiply`) representing `L x`, where `L` is the graph Laplacian restricted to free vertices: its diagonal is vertex degree, its off-diagonal action is "subtract each neighbour's current value." It solves `L x = b` — one solve for the x-coordinates, one for y, since the energy has no cross term between coordinates and so separates exactly — using Jacobi-preconditioned conjugate gradient (the `z = r / degree` step is the Jacobi/diagonal preconditioner). This avoids ever building a dense matrix: each CG iteration costs one pass over the edge list, and convergence for a mesh this size and this well-conditioned is fast relative to the vertex count.
 
 ## Further reading
 

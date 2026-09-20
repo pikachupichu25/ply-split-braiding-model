@@ -7,10 +7,10 @@ import type { Face, Simulation } from './domain/types';
 import './cordNetworkPreview.css';
 
 const photoColors = { A: '#655069', B: '#d9f2e8', C: '#1da9d2' };
-const modelLabels: Record<CordNetworkModel, string> = { spring: 'springs', harmonic: 'harmonic' };
+const modelLabels: Record<CordNetworkModel, string> = { elastic: 'elastic', framed: 'framed' };
 const modelNotes: Record<CordNetworkModel, string> = {
-  spring: 'Springs: every cord segment is a spring at its pitch length, port springs set the crossing angle, and the drawing is a minimum of that energy. Width, selvedge turns, and eye placement emerge; nothing is anchored to a frame.',
-  harmonic: 'Harmonic: junctions are averaged into a fixed strip frame, then spaced. Width is set by the cord count.',
+  elastic: 'Elastic: every cord segment is a spring at its natural length, port springs set the crossing angle, and the drawing is a minimum of that energy. Width, selvedge turns, and eye placement emerge; nothing is anchored to a frame.',
+  framed: 'Framed: junctions are averaged into a fixed strip frame (a harmonic embedding), then spaced. Width is set by the cord count.',
 };
 
 export default function CordNetworkPreview({ simulation, colors, mirrorFace, referenceName, referenceImage }: {
@@ -21,7 +21,7 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
   /** Photo of the real braid for the active sample, when it has one. */
   referenceImage?: SamplePatternImage;
 }) {
-  const [model, setModel] = useState<CordNetworkModel>('spring');
+  const [model, setModel] = useState<CordNetworkModel>('elastic');
   const [elongation, setElongation] = useState(1.35);
   const [diameter, setDiameter] = useState(1.35);
   const [mode, setMode] = useState<'surface' | 'cords' | 'structure'>('surface');
@@ -44,8 +44,8 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
       setProgress(done ? 1 : value);
     };
     worker.onerror = () => setError('The cord network worker could not finish. Reload the page to try again.');
-    // The spring geometry is packed at one cord diameter, so the thickness slider only scales its rendering.
-    const request: CordNetworkRequest = { simulation, model, options: model === 'spring' ? { elongation, diameter: diameter / 1.35 } : { elongation, diameter } };
+    // The elastic geometry is packed at one cord diameter, so the thickness slider only scales its rendering.
+    const request: CordNetworkRequest = { simulation, model, options: model === 'elastic' ? { elongation, diameter: diameter / 1.35 } : { elongation, diameter } };
     worker.postMessage(request);
     return () => worker.terminate();
   }, [simulation, elongation, diameter, model]);
@@ -74,7 +74,7 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
     </div>
     <div className="network-controls">
       <div className="toggle-group" aria-label="Cord network model">
-        {(['spring', 'harmonic'] as const).map(value => <button key={value} aria-pressed={model === value} className={model === value ? 'is-active' : ''} onClick={() => setModel(value)}>{modelLabels[value]}</button>)}
+        {(['elastic', 'framed'] as const).map(value => <button key={value} aria-pressed={model === value} className={model === value ? 'is-active' : ''} onClick={() => setModel(value)}>{modelLabels[value]}</button>)}
       </div>
       <div className="toggle-group" aria-label="Cord network rendering">
         {(['surface', 'cords', 'structure'] as const).map(value => <button key={value} aria-pressed={mode === value} className={mode === value ? 'is-active' : ''} onClick={() => setMode(value)}>{value}</button>)}

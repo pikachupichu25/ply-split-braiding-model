@@ -32,7 +32,7 @@ Deliverable: documented convention plus one contrast-colour junction reference a
 
 ## Phase 2 — Plain geometry prototype
 
-Implement the network builder as an independent module, reusing the audit's incidence/port logic. Add distinct control points to repeated pair segments, a boundary scaffold, and an experimental relaxation solver. Keep experimental implementation under `docs/harmonic/` until it has a convincing result; later integration paths can be chosen then.
+Implement the network builder as an independent module, reusing the audit's incidence/port logic. Add distinct control points to repeated pair segments, a boundary scaffold, and an experimental relaxation solver. Keep experimental implementation under `docs/framed/` until it has a convincing result; later integration paths can be chosen then.
 
 Produce three inspectable views from the same geometry:
 

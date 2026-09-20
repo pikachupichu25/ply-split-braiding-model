@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSpringNetwork, resolveSpringProfile } from '../src/domain/springNetwork.ts';
+import { buildElasticNetwork, resolveElasticProfile } from '../src/domain/elasticNetwork.ts';
 import { curvePoint, networkSurfacePatches, renderCordNetworkSvg } from '../src/domain/cordNetwork.ts';
 import type { CordNetworkLayout } from '../src/domain/cordNetwork.ts';
 import { parsePattern } from '../src/domain/parser.ts';
@@ -17,7 +17,7 @@ function simulate(source = wayuuFajon20Pattern, repeats = 1) {
   return simulatePattern(parsed.pattern, repeats);
 }
 const eyes = simulate();
-const layout = buildSpringNetwork(eyes);
+const layout = buildElasticNetwork(eyes);
 
 /** Realised crossing angle at a junction: directions to the midpoints of the two outgoing curves, in degrees. */
 function crossingAngles(result: CordNetworkLayout, events: Simulation['events']) {
@@ -60,7 +60,7 @@ test('Eyes keeps every cord visit and terminal in the shared layout contract', (
 test('Eyes settles without folds or crossings, keeps its digons open, and fills the surface', () => {
   assert.deepEqual(layout.diagnostics, []);
   assert.equal(layout.quality.converged, true);
-  assert.ok(layout.quality.residual < resolveSpringProfile().tolerance);
+  assert.ok(layout.quality.residual < resolveElasticProfile().tolerance);
   assert.deepEqual(layout.quality.crossingConflicts, []);
   assert.deepEqual(layout.quality.portConflicts, []);
   assert.equal(layout.quality.parallelPairs, 2);
@@ -71,32 +71,32 @@ test('Eyes settles without folds or crossings, keeps its digons open, and fills 
   }
   assert.equal(networkSurfacePatches(layout).length, 600);
   const angles = crossingAngles(layout, eyes.events);
-  assert.ok(Math.abs(median(angles) - 2 * resolveSpringProfile().theta * 180 / Math.PI) < 6, `median crossing angle ${median(angles)}`);
+  assert.ok(Math.abs(median(angles) - 2 * resolveElasticProfile().theta * 180 / Math.PI) < 6, `median crossing angle ${median(angles)}`);
 });
 
 test('the chevron is a uniform lattice at the profile crossing angle', () => {
-  const chevron = simulate(chevronPattern, 8), result = buildSpringNetwork(chevron, { elongation: 1.35 });
+  const chevron = simulate(chevronPattern, 8), result = buildElasticNetwork(chevron, { elongation: 1.35 });
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.quality.converged, true);
   const angles = crossingAngles(result, chevron.events), target = 2 * Math.atan(1 / 1.35) * 180 / Math.PI;
   assert.ok(angles.every(a => Math.abs(a - target) < 4), `angles ${angles.map(a => a.toFixed(1)).join(' ')}`);
-  const wide = buildSpringNetwork(chevron, { elongation: 0.8 });
+  const wide = buildElasticNetwork(chevron, { elongation: 0.8 });
   assert.ok(Math.abs(median(crossingAngles(wide, chevron.events)) - 2 * Math.atan(1 / 0.8) * 180 / Math.PI) < 4);
   assert.ok(wide.width > result.width && wide.height < result.height);
 });
 
 test('geometry is unchanged by recolouring and bijective cord renaming, and deterministic', () => {
   const plain = simulate(wayuuFajon20Pattern.replace('AABCBBCBAAAABCBBCBAA', 'AAAAAAAAAAAAAAAAAAAA'));
-  assert.deepEqual(buildSpringNetwork(plain).points, layout.points);
+  assert.deepEqual(buildElasticNetwork(plain).points, layout.points);
   const renamed = JSON.parse(JSON.stringify(eyes).replace(/C(\d\d)/g, 'strand-$1')) as Simulation;
-  assert.deepEqual(buildSpringNetwork(renamed).points, layout.points);
-  assert.deepEqual(buildSpringNetwork(eyes).points, layout.points);
+  assert.deepEqual(buildElasticNetwork(renamed).points, layout.points);
+  assert.deepEqual(buildElasticNetwork(eyes).points, layout.points);
 });
 
 test('removing visually redundant splits changes the generated network', () => {
   const ast = parsePattern(wayuuFajon20Pattern).pattern!;
   const altered = simulatePattern({ ...ast, rows: ast.rows.filter(r => ![5, 6, 15].includes(r.number)) }, 1);
-  const result = buildSpringNetwork(altered);
+  const result = buildElasticNetwork(altered);
   assert.equal(result.junctions.length, 170);
   assert.notDeepEqual(result.points.slice(0, 100), layout.points.slice(0, 100));
 });
@@ -104,7 +104,7 @@ test('removing visually redundant splits changes the generated network', () => {
 test('progress reports increase and can build intermediate layouts with the full contract', () => {
   const seen: number[] = [];
   let intermediate: CordNetworkLayout | undefined;
-  const final = buildSpringNetwork(simulate(colorBlock8Pattern, 4), { polishSteps: 400 }, (progress, build) => {
+  const final = buildElasticNetwork(simulate(colorBlock8Pattern, 4), { polishSteps: 400 }, (progress, build) => {
     seen.push(progress);
     if (!intermediate) intermediate = build();
   });
@@ -117,24 +117,24 @@ test('progress reports increase and can build intermediate layouts with the full
   assert.ok(renderCordNetworkSvg(intermediate!, { colors: { A: 'red', B: 'blue', C: 'green' }, surface: true }).includes('<svg'));
 });
 
-test('empty, untouched, and broken histories behave like the harmonic model', () => {
+test('empty, untouched, and broken histories behave like the framed model', () => {
   const noEvents = { events: [], snapshots: [eyes.snapshots[0]], diagnostics: [], totalRows: 0 };
-  const result = buildSpringNetwork(noEvents);
+  const result = buildElasticNetwork(noEvents);
   assert.equal(result.cords.length, 20);
   assert.ok(result.cords.every(c => c.curves.length === 1));
   assert.match(result.diagnostics[0], /No splits yet/);
-  const empty = buildSpringNetwork({ events: [], snapshots: [], diagnostics: [], totalRows: 0 });
+  const empty = buildElasticNetwork({ events: [], snapshots: [], diagnostics: [], totalRows: 0 });
   assert.ok(Number.isFinite(empty.width) && Number.isFinite(empty.height));
   const broken = structuredClone(eyes);
   broken.events[2].splitteeId = 'missing';
-  const failed = buildSpringNetwork(broken);
+  const failed = buildElasticNetwork(broken);
   assert.equal(failed.junctions.length, 0);
   assert.match(failed.diagnostics[0], /Invalid or discontinuous/);
 });
 
 test('a multi-block Eyes preview stays finite and traceable within the solver budget', () => {
   const started = Date.now();
-  const result = buildSpringNetwork(simulate(wayuuFajon20Pattern, 3));
+  const result = buildElasticNetwork(simulate(wayuuFajon20Pattern, 3));
   const elapsed = Date.now() - started;
   assert.equal(result.junctions.length, 519);
   assert.ok(result.points.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)));

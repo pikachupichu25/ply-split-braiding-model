@@ -1,5 +1,5 @@
 // Research audit only. No imports from any finished-layout implementation.
-// Run from the repository root: node --experimental-strip-types docs/harmonic/audit-events.mjs
+// Run from the repository root: node --experimental-strip-types docs/framed/audit-events.mjs
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';

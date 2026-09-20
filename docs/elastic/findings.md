@@ -1,17 +1,17 @@
-# Findings: spring layout of the Eyes and chevron graphs
+# Findings: elastic layout of the Eyes and chevron graphs
 
-Experiment date: 2026-09-10. Script: [`experiment.mjs`](experiment.mjs). Model: [README](README.md) §4–§5. Nothing here is photo-validated; the comparison target remains [`eyes.png`](../../public/expected-layouts/eyes.png).
+Experiment date: 2026-09-10. Script: [`experiment.mjs`](experiment.mjs). Model: [README](README.md) §4–§5. Nothing here is photo-validated; the comparison target remains [`eyes.webp`](../../public/expected-layouts/eyes.webp).
 
 ```sh
-node --experimental-strip-types docs/spring/experiment.mjs eyes
-node --experimental-strip-types docs/spring/experiment.mjs eyes blocks=3 seeds=0 tag=b3
-node --experimental-strip-types docs/spring/experiment.mjs chevron blocks=8
-node --experimental-strip-types docs/spring/experiment.mjs eyescore source=docs/spring/eyes-core.scot seeds=0 tag=core
+node --experimental-strip-types docs/elastic/experiment.mjs eyes
+node --experimental-strip-types docs/elastic/experiment.mjs eyes blocks=3 seeds=0 tag=b3
+node --experimental-strip-types docs/elastic/experiment.mjs chevron blocks=8
+node --experimental-strip-types docs/elastic/experiment.mjs eyescore source=docs/elastic/eyes-core.scot seeds=0 tag=core
 ```
 
 Each run writes `<sample>-surface.svg` (cords with the splittee patch on top at every split), `<sample>-structure.svg` (centrelines, event IDs, conflict markers), `<sample>-random-<k>.svg` for each random seed, and `<sample>-metrics.json` with the profile, graph sizes, per-run energy, strains, crossing angles, orientation, crossings, digon widths, and the Procrustes distance of every random-seed layout to the wiring-seed layout. The script imports only the parser, simulator, and example sources. It changes no application file.
 
-**Summary.** The graph from astra plus the spring energy of the README produces the Eyes motif from cord colours and connectivity alone: a nested eye in the centre of one written block, partial eyes at both selvedges, and, over three blocks, the alternating central and paired arrangement the photograph shows. Getting there required three corrections to the proposal: an under-damped physical solve instead of CrochetPARADE's ten polish steps, a separate rest length for selvedge turns, and repulsion exclusions around each junction. The regular sections of every pattern come out as clean `2θ` lattices. The transition rows of Eyes leave shear bands that a 2D spring fabric cannot remove.
+**Summary.** The graph from the framed model plus the spring energy of the README produces the Eyes motif from cord colours and connectivity alone: a nested eye in the centre of one written block, partial eyes at both selvedges, and, over three blocks, the alternating central and paired arrangement the photograph shows. Getting there required three corrections to the proposal: an under-damped physical solve instead of CrochetPARADE's ten polish steps, a separate rest length for selvedge turns, and repulsion exclusions around each junction. The regular sections of every pattern come out as clean `2θ` lattices. The transition rows of Eyes leave shear bands that a 2D spring fabric cannot remove.
 
 ## 1. Results with the final defaults
 
@@ -29,7 +29,7 @@ Profile: `θ = 36°`, `ℓ = 1/sin 72° = 1.051`, `d_min = 0.9`, `ℓ_turn = 2.0
 Figures, all from the wiring seed:
 
 - [`eyes-surface.svg`](eyes-surface.svg) and [`eyes-structure.svg`](eyes-structure.svg): one block. A complete eye in the centre with a dark centre, white band, blue band, white band, and dark field. Half eyes at the left and right selvedges. The next eyes begin at the top and bottom frontiers.
-- [`eyes-b3-surface.svg`](eyes-b3-surface.svg): three blocks. Central eyes alternate with pairs of eyes side by side, with partial eyes at the selvedges between them. This is the stagger described in [astra findings §1](../astra/findings.md#1-what-the-supplied-photograph-establishes).
+- [`eyes-b3-surface.svg`](eyes-b3-surface.svg): three blocks. Central eyes alternate with pairs of eyes side by side, with partial eyes at the selvedges between them. This is the stagger described in [framed findings §1](../framed/findings.md#1-what-the-supplied-photograph-establishes).
 - [`chevron-surface.svg`](chevron-surface.svg): the eight-cord chevron as a uniform lattice with rounded selvedge loops.
 - [`eyescore-core-surface.svg`](eyescore-core-surface.svg): Eyes rows 1–4 only, repeated six times, from [`eyes-core.scot`](eyes-core.scot).
 
@@ -123,7 +123,7 @@ Node 22 on the research machine; the split between main loop and physical solve 
 
 ## 7. In the application
 
-The model now backs the Cord network view as [`src/domain/springNetwork.ts`](../../src/domain/springNetwork.ts), selected by a springs/harmonic toggle with springs as the default. It emits the same `CordNetworkLayout` the harmonic model does, so the SVG renderer, surface patches, face mirror, SVG download, and the click-to-inspect junction panel are unchanged.
+The model now backs the Cord network view as [`src/domain/elasticNetwork.ts`](../../src/domain/elasticNetwork.ts), selected by an elastic/framed toggle with elastic as the default. It emits the same `CordNetworkLayout` the harmonic model does, so the SVG renderer, surface patches, face mirror, SVG download, and the click-to-inspect junction panel are unchanged.
 
 Two things had to change for interactive use:
 
@@ -141,12 +141,12 @@ The local scaffold is not a quality compromise. The wiring seed is already plana
 
 Solves run in the existing worker and stream intermediate layouts, so the preview draws a partial network with a percentage while it settles. Intermediate frames skip the crossing and port audit; it runs once on the finished geometry. The two samples that still finish with conflicts, Eyes (36-cord) and Eyelets, report them in the preview's diagnostics rather than presenting an invalid layout as finished.
 
-The full Eyes cycle rendered beside the reference photograph reproduces the staggered nested eyes, alternating a central eye with a side-by-side pair, with partial eyes at both selvedges. That is a qualitative match of the motif arrangement, not the calibrated photo comparison of astra Phase 3, which is still to do.
+The full Eyes cycle rendered beside the reference photograph reproduces the staggered nested eyes, alternating a central eye with a side-by-side pair, with partial eyes at both selvedges. That is a qualitative match of the motif arrangement, not the calibrated photo comparison of framed Phase 3, which is still to do.
 
 ## 8. What to do next
 
 1. **Shear and removal tests** from README §11, and the recolour, rename, and empty-input checks. They are cheap and decide whether the rule is general.
 2. **Unfolding for random seeds**: apply the orientation term from the start with the mirror vote at `T/4`, or drop random starts and keep the wiring seed with a perturbation test instead.
 3. **3D template** at the transitions, where the planar solve stores strain that a real fabric would release out of plane.
-4. **Photo comparison** on the central Eyes region following [astra Phase 3](../astra/validation.md#phase-3--compare-to-the-real-photo). The one-block layout already has the landmarks that phase needs.
+4. **Photo comparison** on the central Eyes region following [framed Phase 3](../framed/validation.md#phase-3--compare-to-the-real-photo). The one-block layout already has the landmarks that phase needs.
 5. Resolve the remaining conflicts in Eyes (36-cord) and Eyelets, which are selvedge-loop folds of the same kind as §3.

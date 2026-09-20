@@ -1,11 +1,11 @@
-import { AnnealFigure, AverageFigure, EventGraphFigure, HarmonicSolveFigure, RhombusFigure, SpringEnergyFigure, SpringSolveFigure, ValleyFigure, termIcons } from './ModelsExplainerFigures';
+import { AnnealFigure, AverageFigure, EventGraphFigure, FramedSolveFigure, RhombusFigure, SpringEnergyFigure, ElasticSolveFigure, ValleyFigure, termIcons } from './ModelsExplainerFigures';
 import './modelsExplainer.css';
 
 const contents = [
   ['problem', 'The problem'],
   ['why-springs', 'Why springs'],
-  ['harmonic', 'The harmonic model'],
-  ['springs', 'The spring model'],
+  ['framed', 'The framed model'],
+  ['elastic', 'The elastic model'],
   ['side-by-side', 'Side by side'],
   ['limits', 'What neither model is'],
   ['symbols', 'Symbols'],
@@ -26,7 +26,7 @@ export default function ModelsExplainer() {
       <a className="mx-back" href="#/" aria-label="Back to SCOT Braid Studio">←</a>
       <div className="mx-title">
         <p className="mx-kicker">SCOT Braid Studio · the physics behind the Cord network view</p>
-        <h1>How the harmonic and spring models work</h1>
+        <h1>How the framed and elastic models work</h1>
       </div>
       <p className="mx-header-note">For anyone with first-year maths and physics. Every figure marked <em>interactive</em> is live, and the two chevron figures run the app's real solvers.</p>
     </header>
@@ -35,7 +35,7 @@ export default function ModelsExplainer() {
       <nav className="mx-toc" aria-label="Contents">
         <p className="mx-kicker">Contents</p>
         <ol>{contents.map(([id, label], i) => <li key={id}><a href={`#/models#${id}`} onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}><span>{String(i + 1).padStart(2, '0')}</span>{label}</a></li>)}</ol>
-        <p className="mx-toc-note">Deeper reading lives in the repository: <code>docs/cord-network-models-explained.md</code>, <code>docs/harmonic</code> and <code>docs/spring</code>.</p>
+        <p className="mx-toc-note">Deeper reading lives in the repository: <code>docs/cord-network-models-explained.md</code>, <code>docs/framed</code> and <code>docs/elastic</code>.</p>
       </nav>
 
       <article className="mx-article">
@@ -66,19 +66,19 @@ export default function ModelsExplainer() {
           <pre className="mx-math">E = ½ k (r − r₀)²</pre>
           <p>and pulls its ends back with force <code>k (r − r₀)</code>. Force is minus the slope of the energy. Two consequences carry everything that follows: a node is at rest where the forces on it cancel, which is where the energy has zero slope in every direction; and the energy of a network is simply the sum over its springs, so the force on a node is the sum of the forces from every spring attached to it.</p>
           <SpringEnergyFigure />
-          <p>The harmonic model came first. It is linear, has exactly one answer, is cheap, and has a mathematical guarantee that the drawing will not fold. But it needs a frame to hold the fabric open, and the frame dictates the width and overall shape. The spring model was built so that width, edge loops and the eye motifs could emerge from the cords themselves. It is the default view today; the harmonic model stays as the comparison.</p>
+          <p>The two models are named after what decides the shape. In the <strong>framed</strong> model the shape is imposed from outside: junctions are averaged inside a pinned rectangle. It came first, is linear, has exactly one answer, is cheap, and has a mathematical guarantee that the drawing will not fold. In the <strong>elastic</strong> model the shape emerges from the material: cords have a natural length, a preferred crossing angle and a thickness, and the strip finds its own width. It is the default view today; the framed model stays as the comparison.</p>
         </section>
 
-        <section id="harmonic" className="mx-section">
-          <header className="mx-section-head"><span className="mx-numeral">03</span><h2>The harmonic model</h2></header>
+        <section id="framed" className="mx-section">
+          <header className="mx-section-head"><span className="mx-numeral">03</span><h2>The framed model</h2></header>
           <p className="mx-rule">Every free node sits at the average position of its neighbours.</p>
-          <p>If node <code>i</code> is joined to nodes <code>j₁, j₂, …</code>, then <code>x_i = (x_j₁ + x_j₂ + …) / (number of neighbours)</code>, and the same for <code>y</code>. A function whose value at each point equals the average of its surroundings is called a <strong>harmonic function</strong>; that is where the model's name comes from. Steady temperature in a metal plate obeys the same rule, and so does the voltage in a network of equal resistors and the height of a soap film on a wire loop.</p>
+          <p>If node <code>i</code> is joined to nodes <code>j₁, j₂, …</code>, then <code>x_i = (x_j₁ + x_j₂ + …) / (number of neighbours)</code>, and the same for <code>y</code>. A function whose value at each point equals the average of its surroundings is called a <strong>harmonic function</strong>, so this step is a <em>harmonic embedding</em>; the app used to call the whole model "harmonic" after it. Steady temperature in a metal plate obeys the same rule, and so does the voltage in a network of equal resistors and the height of a soap film on a wire loop.</p>
           <p>It is also a spring network. Give every edge a spring of stiffness 1 and natural length <em>zero</em>, so its energy is <code>½ |x_i − x_j|²</code>. The force on node <code>i</code> is the sum over its neighbours of <code>(x_j − x_i)</code>, and setting that to zero gives</p>
           <pre className="mx-math">Σ_j (x_j − x_i) = 0    ⇒    x_i = (Σ_j x_j) / (number of neighbours)</pre>
-          <p>which is exactly the averaging rule. The name is not a coincidence either: <code>½kx²</code> is the harmonic-oscillator potential, and this is a network of them at rest.</p>
+          <p>which is exactly the averaging rule. So the framed model is a spring network too, with springs of zero natural length; the two models differ in what their springs want, not in whether there are springs. (The word is no coincidence: <code>½kx²</code> is the harmonic-oscillator potential, and this is a network of them at rest.)</p>
           <AverageFigure />
           <h3>Why a frame is needed</h3>
-          <p>Zero-length springs have one obvious flaw: with nothing held still, every spring wants length zero and the whole network collapses to a point. So some nodes are <strong>pinned</strong>: every cord's start on a line at the top, every cord's end on a line at the bottom, and every split at the two outermost gaps on a vertical line at the left or right, spaced evenly in the order they occurred. Together these make a rectangle, the frame. Its height comes from the number of events per lane gap scaled by the Length / width slider; its width is the cord count plus a margin. Everything else is free and gets averaged into it.</p>
+          <p>Zero-length springs have one obvious flaw: with nothing held still, every spring wants length zero and the whole network collapses to a point. So some nodes are <strong>pinned</strong>: every cord's start on a line at the top, every cord's end on a line at the bottom, and every split at the two outermost gaps on a vertical line at the left or right, spaced evenly in the order they occurred. Together these make a rectangle, the frame the model is named after. Its height comes from the number of events per lane gap scaled by the Length / width slider; its width is the cord count plus a margin. Everything else is free and gets averaged into it.</p>
           <h3>Why it was a good first model</h3>
           <ul>
             <li><strong>One answer, found exactly.</strong> The averaging rule is a system of linear equations, one per free node, with the pinned positions as the known right-hand side. The <code>x</code> and <code>y</code> coordinates do not interact, so it is two independent solves, done by conjugate gradient, a standard iterative method for large sparse systems. No random start, no schedule; running it twice gives the same drawing.</li>
@@ -87,13 +87,14 @@ export default function ModelsExplainer() {
           </ul>
           <h3>What it gets wrong, and the patch</h3>
           <p>The energy only says "be short". It has no idea how long a piece of cord <em>should</em> be, no objection to a kink, and no notion of thickness. Cells in the transition rows of Eyes come out tiny because nothing stops neighbouring junctions bunching up; the width is fixed by the cord count; the frame's straight sides are a guess baked into the result. The implementation adds a <strong>spacing relaxation</strong> after the solve: every junction-to-junction edge becomes an ordinary spring with a real rest length and the nodes take up to 80 small downhill steps, each checked first so that no angular sector around a node flips or flattens. It is a patch, not a physical model.</p>
-          <HarmonicSolveFigure />
+          <FramedSolveFigure />
           <aside className="mx-pull"><p className="mx-kicker">In one picture</p><p>A fishing net stretched over a rectangular frame. Pull the frame open and every knot settles to the average of its neighbours. The net can never tangle, but the frame decides the shape, and the mesh gets squeezed wherever the knots are dense.</p></aside>
         </section>
 
-        <section id="springs" className="mx-section">
-          <header className="mx-section-head"><span className="mx-numeral">04</span><h2>The spring model</h2></header>
+        <section id="elastic" className="mx-section">
+          <header className="mx-section-head"><span className="mx-numeral">04</span><h2>The elastic model</h2></header>
           <p className="mx-rule">Give every spring a real natural length, add the springs a mesh needs to hold its shape, remove the frame, and let the fabric find its own width.</p>
+          <p>That is what <em>elastic</em> means here: the material has a shape it wants to return to, which a zero-length spring never has. Natural length, crossing angle, thickness and a ban on folding are all elastic properties, and they are exactly what the framed model lacks.</p>
           <p>The whole model is written in units of the cord diameter, <code>d = 1</code>. Colours, faces and row numbers never enter it; they only affect how the finished drawing is painted.</p>
           <h3>The geometry of one crossing</h3>
           <p>In a regular section there are two families of cords running at <code>+θ</code> and <code>−θ</code> to the length of the braid, so cords cross at <code>2θ</code>. The slider's default 1.35 is <code>cot θ</code>, which gives <code>θ ≈ 36.5°</code> and a crossing of about 73°. If the cords of one family lie side by side, touching, they are one diameter apart measured across themselves; walking along a cord of the other family, which crosses them at <code>2θ</code>, the crossings are</p>
@@ -122,7 +123,7 @@ export default function ModelsExplainer() {
           <p>Every node has unit mass, feels the spring forces, and is slowed by a weak drag, for up to 3000 steps or until the largest force on any node is below <code>2 × 10⁻³</code>. Then the drawing is centred, rotated so its long axis is vertical, turned so the cords start at the top, and mirrored if needed.</p>
           <p>Why momentum? Gradient descent is a ball rolling in honey: each step is proportional to the slope, so in a long, shallow valley it crawls. The energy of a strip has exactly such a valley, a <em>global shear</em> where every cell tilts a little. Worse, the scaffold prefers a square lattice and leaves the fabric sheared toward 90°. With ten over-damped polish steps the Eyes lattice stuck at 89.7°; with 3000 under-damped steps it reached 79.4°, the gradient went to zero, and 6000 steps gave the identical answer.</p>
           <ValleyFigure />
-          <SpringSolveFigure />
+          <ElasticSolveFigure />
           <h3>What comes out</h3>
           <p>Node positions become the drawing directly: each cord is a smooth curve through its junctions and midpoints, and at each junction the splittee's colour is painted over the splitter, because the splittee's plies pass in front of and behind it. The same two checks then run on both models' output: sampled curve crossings and port order at every junction. A layout that fails either is reported as unresolved, with the offending junctions listed; nothing is ever fixed by moving one event by hand.</p>
           <p>With the default profile the chevron settles to <code>72.0° ± 0.5°</code> with negligible strain. One block of Eyes comes out at <code>78.5° ± 16.4°</code>, the spread concentrated in the transition rows, where a lattice defect leaves a shear that a flat spring sheet cannot fully absorb. The Eyes motif, a nested eye in the centre and half eyes at each edge, emerges from colours and connectivity alone; over three blocks the eyes alternate between the centre and side-by-side pairs, which is what the photograph shows.</p>
@@ -132,9 +133,10 @@ export default function ModelsExplainer() {
         <section id="side-by-side" className="mx-section">
           <header className="mx-section-head"><span className="mx-numeral">05</span><h2>Side by side</h2></header>
           <table className="mx-table">
-            <thead><tr><th /><th>Harmonic</th><th>Springs</th></tr></thead>
+            <thead><tr><th /><th>Framed</th><th>Elastic</th></tr></thead>
             <tbody>
               {[
+                ['Technical name', 'harmonic (Tutte) embedding, then spacing', 'rest-length spring network, force-directed and annealed'],
                 ['Springs', 'zero natural length', 'real natural lengths, plus straightness, angle, repulsion, orientation'],
                 ['What holds it open', 'a pinned rectangular frame', 'nothing; the rest lengths and crossing angle do'],
                 ['Width of the strip', 'set by the cord count', 'emerges from ℓ, θ and the cord count'],
@@ -155,9 +157,9 @@ export default function ModelsExplainer() {
           <header className="mx-section-head"><span className="mx-numeral">06</span><h2>What neither model is</h2></header>
           <ul>
             <li><strong>Not a material simulation.</strong> No twist, no friction, no bending stiffness beyond the straightness spring, no tension from the maker's hands. The pitch, the angle and the turn length are packing idealisations, not measurements.</li>
-            <li><strong>Flat.</strong> Both models live in two dimensions. Real fabric can spend strain in the third; the wide junctions in the Eyes transition rows are probably where the real braid puckers. A 3D extension is sketched in the spring model's notes but not built.</li>
+            <li><strong>Flat.</strong> Both models live in two dimensions. Real fabric can spend strain in the third; the wide junctions in the Eyes transition rows are probably where the real braid puckers. A 3D extension is sketched in the elastic model's notes but not built.</li>
             <li><strong>Colour-blind.</strong> Colours, faces and row numbers never enter either energy, so the motif has to come from the structure. That is deliberate: dropping three rows of Eyes changes 35 later pairings without changing a single visible colour, so colour alone cannot be the model.</li>
-            <li><strong>Not yet validated against a photograph.</strong> The spring model produces the Eyes motif qualitatively. Whether its proportions match the real braid is a measurement still to be made.</li>
+            <li><strong>Not yet validated against a photograph.</strong> The elastic model produces the Eyes motif qualitatively. Whether its proportions match the real braid is a measurement still to be made.</li>
           </ul>
         </section>
 
@@ -167,7 +169,7 @@ export default function ModelsExplainer() {
             <thead><tr><th>Symbol</th><th>Meaning</th><th>Default</th></tr></thead>
             <tbody>
               {[
-                ['d', 'cord diameter, the unit of length in the spring model', '1'],
+                ['d', 'cord diameter, the unit of length in the elastic model', '1'],
                 ['θ', 'half the crossing angle; cords run at ±θ to the braid axis', '≈ 36.5° from the slider value cot θ = 1.35'],
                 ['ℓ', 'pitch: natural length of a segment between consecutive splits, d / sin 2θ', '≈ 1.05'],
                 ['ℓ_turn', 'natural length of a selvedge turn, 1.2 × 2ℓ cos θ', '≈ 2.0'],
@@ -181,7 +183,7 @@ export default function ModelsExplainer() {
               ].map(r => <tr key={r[0]}><td><code>{r[0]}</code></td><td>{r[1]}</td><td>{r[2]}</td></tr>)}
             </tbody>
           </table>
-          <p className="mx-colophon">Numbers on this page are taken from <code>src/domain/cordNetwork.ts</code> and <code>src/domain/springNetwork.ts</code>; the experimental results are from <code>docs/spring/findings.md</code>. Method reference: Svetlin Tassev, CrochetPARADE (GPLv3); this app describes its method and copies no code.</p>
+          <p className="mx-colophon">Numbers on this page are taken from <code>src/domain/framedNetwork.ts</code> and <code>src/domain/elasticNetwork.ts</code>; the experimental results are from <code>docs/elastic/findings.md</code>. Method reference: Svetlin Tassev, CrochetPARADE (GPLv3); this app describes its method and copies no code.</p>
         </section>
       </article>
     </div>

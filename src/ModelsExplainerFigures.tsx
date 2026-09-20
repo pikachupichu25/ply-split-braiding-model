@@ -3,15 +3,16 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { parsePattern } from './domain/parser';
 import { simulatePattern } from './domain/simulate';
 import { chevronPattern } from './examples/chevron';
-import { buildCordNetwork, curvePath, curvePoint } from './domain/cordNetwork';
+import { curvePath, curvePoint } from './domain/cordNetwork';
 import type { CordNetworkLayout } from './domain/cordNetwork';
-import { buildSpringNetwork, resolveSpringProfile } from './domain/springNetwork';
+import { buildFramedNetwork } from './domain/framedNetwork';
+import { buildElasticNetwork, resolveElasticProfile } from './domain/elasticNetwork';
 import { buildColorMap } from './domain/colourway';
 import type { SplitEvent } from './domain/types';
 
 /**
  * Figures for the model explainer (#/models). The two "live" figures run the real
- * harmonic and spring solvers on the bundled chevron sample; nothing here is a mock-up.
+ * framed and elastic solvers on the bundled chevron sample; nothing here is a mock-up.
  */
 
 const ink = '#17293d', paper = '#f8f0de', gold = '#d3a448', rust = '#d76b52', teal = '#77b6c9';
@@ -99,7 +100,7 @@ export function EventGraphFigure() {
   });
   const active = chains.find(c => c.cord.id === hover);
   return <Figure n={1} title="From a list of splits to a network" live
-    caption={<>The eight-cord chevron, one block. Hover or tap a cord to trace it. Each split is a node placed at the gap where it happened (across) and in the order it happened (down); each stretch of cord between two visits is an edge. This drawing is also the <em>wiring seed</em> that the spring model starts from.</>}
+    caption={<>The eight-cord chevron, one block. Hover or tap a cord to trace it. Each split is a node placed at the gap where it happened (across) and in the order it happened (down); each stretch of cord between two visits is an edge. This drawing is also the <em>wiring seed</em> that the elastic model starts from.</>}
     controls={<Readout items={active
       ? [['cord', `${active.cord.id} · colour ${active.cord.colorSymbol}`], ['visits', `start → ${active.visits.join(' → ')} → end`], ['edges', String(active.points.length - 1)]]
       : [['trace', 'hover or tap a cord to follow it through every split']]} />}>
@@ -170,7 +171,7 @@ export function AverageFigure() {
   const free = { x: pins.reduce((s, p) => s + p.x, 0) / pins.length, y: pins.reduce((s, p) => s + p.y, 0) / pins.length };
   const arrow = (p: Point) => { const dx = (p.x - free.x) * 0.38, dy = (p.y - free.y) * 0.38, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
     return { x2: free.x + dx, y2: free.y + dy, head: `M${free.x + dx} ${free.y + dy} l${-ux * 9 - uy * 4.5} ${-uy * 9 + ux * 4.5} l${uy * 9} ${-ux * 9} z` }; };
-  return <Figure n={3} title="The harmonic rule: sit at the average of your neighbours" live
+  return <Figure n={3} title="The framed model's rule: sit at the average of your neighbours" live
     caption={<>Three pinned nodes (squares) and one free node (disc) joined to them by zero-length springs. Drag a pinned node: the free node moves to the mean of the three positions, where the three spring forces (arrows) cancel exactly. With more free nodes the rule holds at every one of them at once.</>}
     controls={<Readout items={[['free node', `( (${pins.map(p => Math.round(p.x)).join(' + ')}) / 3 , (${pins.map(p => Math.round(p.y)).join(' + ')}) / 3 ) = (${free.x.toFixed(0)}, ${free.y.toFixed(0)})`], ['Σ F', '(0, 0)']]} />}>
     <svg ref={ref} viewBox="0 0 560 320" className="mx-svg" role="img" aria-label="Free node at the average of three pinned nodes">
@@ -196,29 +197,29 @@ function NetworkDrawing({ layout, pinned, offset }: { layout: CordNetworkLayout;
   </g>;
 }
 
-// ---------------------------------------------------------------- Fig 4: the harmonic solve, for real
-export function HarmonicSolveFigure() {
+// ---------------------------------------------------------------- Fig 4: the framed solve, for real
+export function FramedSolveFigure() {
   const [relaxed, setRelaxed] = useState(false);
   const data = useMemo(() => {
     const simulation = simulateChevron(6), n = simulation.snapshots[0].lanes.length, E = simulation.events.length;
     const pinned = new Set<number>();
     simulation.events.forEach((e, i) => { const gap = Math.min(e.fromLane, e.toLane); if (gap === 1 || gap === n - 1) pinned.add(i); });
-    const layouts = { averaged: buildCordNetwork(simulation, { relax: false }), relaxed: buildCordNetwork(simulation) };
+    const layouts = { averaged: buildFramedNetwork(simulation, { relax: false }), relaxed: buildFramedNetwork(simulation) };
     for (let i = E; i < layouts.averaged.points.length; i++) pinned.add(i);
     const box = (layout: CordNetworkLayout) => { const pts = [...pinned].map(i => layout.points[i]); return { x: Math.min(...pts.map(p => p.x)), y: Math.min(...pts.map(p => p.y)), X: Math.max(...pts.map(p => p.x)), Y: Math.max(...pts.map(p => p.y)) }; };
     return { simulation, pinned, layouts, angles: { averaged: meanCrossingAngle(layouts.averaged, simulation.events), relaxed: meanCrossingAngle(layouts.relaxed, simulation.events) }, frame: box(layouts.averaged) };
   }, []);
   const layout = relaxed ? data.layouts.relaxed : data.layouts.averaged, angle = relaxed ? data.angles.relaxed : data.angles.averaged;
-  return <Figure n={4} title="The harmonic model on the chevron, six blocks" live
-    caption={<>Computed by <code>buildCordNetwork</code>, the same code the app runs. Squares are pinned: every start and end, and every split at the two outer gaps, on a rectangular frame (dashed). Every other node is at the average of its neighbours. The second view adds the 80-step spacing relaxation that gives the segments a preferred length.</>}
+  return <Figure n={4} title="The framed model on the chevron, six blocks" live
+    caption={<>Computed by <code>buildFramedNetwork</code>, the same code the app runs. Squares are pinned: every start and end, and every split at the two outer gaps, on a rectangular frame (dashed). Every other node is at the average of its neighbours. The second view adds the 80-step spacing relaxation that gives the segments a preferred length.</>}
     controls={<>
-      <div className="mx-toggle" role="group" aria-label="Harmonic stage">
+      <div className="mx-toggle" role="group" aria-label="Framed model stage">
         <button type="button" aria-pressed={!relaxed} className={relaxed ? '' : 'is-active'} onClick={() => setRelaxed(false)}>averaging only</button>
         <button type="button" aria-pressed={relaxed} className={relaxed ? 'is-active' : ''} onClick={() => setRelaxed(true)}>then spaced</button>
       </div>
       <Readout items={[['pinned nodes', String(data.pinned.size)], ['free nodes', String(layout.points.length - data.pinned.size)], ['mean crossing angle', `${angle.toFixed(1)}°`], ['solve', `${layout.quality.iterations} CG iterations · ${layout.quality.relaxationSteps} spacing steps`]]} />
     </>}>
-    <svg viewBox={`0 0 ${layout.width} ${layout.height}`} className="mx-svg mx-svg--network" role="img" aria-label="Harmonic layout of the chevron">
+    <svg viewBox={`0 0 ${layout.width} ${layout.height}`} className="mx-svg mx-svg--network" role="img" aria-label="Framed layout of the chevron">
       <rect x={data.frame.x} y={data.frame.y} width={data.frame.X - data.frame.x} height={data.frame.Y - data.frame.y} fill="none" stroke={rust} strokeWidth={0.04} strokeDasharray="0.18 0.14" />
       <NetworkDrawing layout={layout} pinned={data.pinned} />
     </svg>
@@ -227,7 +228,7 @@ export function HarmonicSolveFigure() {
 
 // ---------------------------------------------------------------- Fig 5: the rhombus and the crossing-angle spring
 export function RhombusFigure() {
-  const profile = useMemo(() => resolveSpringProfile({}), []);
+  const profile = useMemo(() => resolveElasticProfile({}), []);
   const theta = deg(profile.theta), ell = profile.pitch, restLength = 2 * ell * Math.sin(profile.theta);
   const [phi, setPhi] = useState(54);
   const anim = useRef<number>(0);
@@ -341,15 +342,15 @@ export function ValleyFigure() {
   </Figure>;
 }
 
-// ---------------------------------------------------------------- Fig 8: the spring solve, for real
+// ---------------------------------------------------------------- Fig 8: the elastic solve, for real
 type Frame = { label: string; phase: 'seed' | 'unfold' | 'settle' | 'done'; layout: CordNetworkLayout; angle: number };
-export function SpringSolveFigure() {
+export function ElasticSolveFigure() {
   const data = useMemo(() => {
-    const simulation = simulateChevron(6), events = simulation.events, profile = resolveSpringProfile({}), T = profile.iterations;
+    const simulation = simulateChevron(6), events = simulation.events, profile = resolveElasticProfile({}), T = profile.iterations;
     const frames: Frame[] = [];
-    const seed = buildSpringNetwork(simulation, { iterations: 0, polishSteps: 0 });
+    const seed = buildElasticNetwork(simulation, { iterations: 0, polishSteps: 0 });
     frames.push({ label: 'wiring seed · before any step', phase: 'seed', layout: seed, angle: meanCrossingAngle(seed, events) });
-    const final = buildSpringNetwork(simulation, {}, (progress, build) => {
+    const final = buildElasticNetwork(simulation, {}, (progress, build) => {
       const layout = build();
       if (progress < 0.4) {
         const t = Math.round(progress / 0.4 * T);
@@ -371,15 +372,15 @@ export function SpringSolveFigure() {
   }, [playing, data.frames.length]);
   const frame = data.frames[index], last = data.frames.length - 1;
   const gauge = (a: number) => 60 + clamp((a - 55) / 50, 0, 1) * 440;
-  return <Figure n={8} title="The spring model on the chevron, six blocks, step by step" live
-    caption={<>Every frame is a real intermediate layout from <code>buildSpringNetwork</code>, captured as the app's own progress callback delivers it. Watch the gauge: the scaffold pulls the crossing wider, toward the square lattice it prefers, and the settling pass brings it back to the target and rings around it before every force dies away. The wiring seed is already close to a lattice, so the app's local scaffold has little to unfold here; on the Eyes pattern with an all-pairs scaffold the unfold parked the fabric at 90°.</>}
+  return <Figure n={8} title="The elastic model on the chevron, six blocks, step by step" live
+    caption={<>Every frame is a real intermediate layout from <code>buildElasticNetwork</code>, captured as the app's own progress callback delivers it. Watch the gauge: the scaffold pulls the crossing wider, toward the square lattice it prefers, and the settling pass brings it back to the target and rings around it before every force dies away. The wiring seed is already close to a lattice, so the app's local scaffold has little to unfold here; on the Eyes pattern with an all-pairs scaffold the unfold parked the fabric at 90°.</>}
     controls={<>
       <button type="button" className="mx-button" onClick={() => { if (index >= last) setIndex(0); setPlaying(p => !p); }}>{playing ? 'pause' : index >= last ? 'replay' : 'play'}</button>
       <label className="mx-slider">frame<input type="range" min={0} max={last} value={index} onChange={e => { setPlaying(false); setIndex(Number(e.target.value)); }} aria-label="Solver frame" /><output>{index} / {last}</output></label>
       <Readout items={[['stage', frame.label], ['mean crossing angle', `${frame.angle.toFixed(1)}° (target ${data.target.toFixed(1)}°)`]]} />
     </>}>
     <div className="mx-solve">
-      <svg viewBox={`0 0 ${data.width} ${data.height}`} className="mx-svg mx-svg--network" role="img" aria-label={`Spring layout, ${frame.label}`}>
+      <svg viewBox={`0 0 ${data.width} ${data.height}`} className="mx-svg mx-svg--network" role="img" aria-label={`Elastic layout, ${frame.label}`}>
         <NetworkDrawing layout={frame.layout} offset={{ x: (data.width - frame.layout.width) / 2, y: (data.height - frame.layout.height) / 2 }} />
       </svg>
       <svg viewBox="0 0 560 44" className="mx-svg mx-gauge" role="img" aria-label="Crossing angle gauge">

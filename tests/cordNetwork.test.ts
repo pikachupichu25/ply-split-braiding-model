@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildCordNetwork, curveLength, curvePoint, findCurveCrossings, networkSurfacePatches, renderCordNetworkSvg, splitCurve } from '../src/domain/cordNetwork.ts';
-import { buildSpringNetwork } from '../src/domain/springNetwork.ts';
+import { curveLength, curvePoint, findCurveCrossings, networkSurfacePatches, renderCordNetworkSvg, splitCurve } from '../src/domain/cordNetwork.ts';
+import { buildFramedNetwork } from '../src/domain/framedNetwork.ts';
+import { buildElasticNetwork } from '../src/domain/elasticNetwork.ts';
 import type { CordCurve } from '../src/domain/cordNetwork.ts';
 import { parsePattern } from '../src/domain/parser.ts';
 import { simulatePattern } from '../src/domain/simulate.ts';
@@ -21,7 +22,7 @@ function simulate(source = wayuuFajon20Pattern, repeats = 1) {
   return simulatePattern(parsed.pattern, repeats);
 }
 const eyes = simulate();
-const layout = buildCordNetwork(eyes);
+const layout = buildFramedNetwork(eyes);
 
 test('Eyes retains every cord visit, same-colour split, and terminal', () => {
   assert.equal(layout.cords.length, 20);
@@ -55,7 +56,7 @@ test('repeated pair meetings retain distinct curved segments and all transition 
 });
 
 test('the splittee cap reaches far enough to hide the splitter at every crossing', () => {
-  for (const [model, result] of [['harmonic', layout], ['spring', buildSpringNetwork(eyes)]] as const) {
+  for (const [model, result] of [['framed', layout], ['elastic', buildElasticNetwork(eyes)]] as const) {
     const byId = new Map(result.cords.map(c => [c.id, c]));
     result.junctions.forEach((j, i) => {
       const splittee = byId.get(j.event.splitteeId)!, k = splittee.nodes.indexOf(i);
@@ -70,15 +71,15 @@ test('the splittee cap reaches far enough to hide the splitter at every crossing
 
 test('geometry is unchanged by recolouring and bijective cord renaming', () => {
   const plain = simulate(wayuuFajon20Pattern.replace('AABCBBCBAAAABCBBCBAA', 'AAAAAAAAAAAAAAAAAAAA'));
-  assert.deepEqual(buildCordNetwork(plain).points, layout.points);
+  assert.deepEqual(buildFramedNetwork(plain).points, layout.points);
   const renamed = JSON.parse(JSON.stringify(eyes).replace(/C(\d\d)/g, 'strand-$1')) as Simulation;
-  assert.deepEqual(buildCordNetwork(renamed).points, layout.points);
+  assert.deepEqual(buildFramedNetwork(renamed).points, layout.points);
 });
 
 test('removing visually redundant splits changes the generated network', () => {
   const ast = parsePattern(wayuuFajon20Pattern).pattern!;
   const altered = simulatePattern({ ...ast, rows: ast.rows.filter(r => ![5, 6, 15].includes(r.number)) }, 1);
-  const result = buildCordNetwork(altered);
+  const result = buildFramedNetwork(altered);
   assert.equal(result.junctions.length, 170);
   const originalPairs = eyes.events.filter(e => ![5, 6, 15].includes(e.sourceRow));
   const changed = altered.events.filter((e, i) => e.splitterId !== originalPairs[i].splitterId || e.splitteeId !== originalPairs[i].splitteeId);
@@ -88,7 +89,7 @@ test('removing visually redundant splits changes the generated network', () => {
 
 test('all sample networks preserve projected crossing and port topology', () => {
   for (const source of [wayuuFajon20Pattern, eyes36Pattern, arrowPattern, braid16Pattern, chevronPattern, colorBlock8Pattern, doubleChevron24Pattern]) {
-    const result = buildCordNetwork(simulate(source, 3));
+    const result = buildFramedNetwork(simulate(source, 3));
     assert.deepEqual(result.diagnostics, [], source.split('\n')[0]);
     assert.equal(result.quality.converged, true);
     assert.deepEqual(result.quality.crossingConflicts, []);
@@ -98,7 +99,7 @@ test('all sample networks preserve projected crossing and port topology', () => 
 });
 
 test('a long Eyes preview preserves cord identities across the full cycle', () => {
-  const result = buildCordNetwork(simulate(wayuuFajon20Pattern, 10));
+  const result = buildFramedNetwork(simulate(wayuuFajon20Pattern, 10));
   assert.equal(result.junctions.length, 1730);
   assert.deepEqual(result.diagnostics, []);
   for (const c of result.cords) assert.equal(result.points[c.nodes[0]].x, result.points[c.nodes.at(-1)!].x);
@@ -106,14 +107,14 @@ test('a long Eyes preview preserves cord identities across the full cycle', () =
 
 test('empty and untouched cords remain represented; broken event histories fail visibly', () => {
   const noEvents = { events: [], snapshots: [eyes.snapshots[0]], diagnostics: [], totalRows: 0 };
-  const result = buildCordNetwork(noEvents);
+  const result = buildFramedNetwork(noEvents);
   assert.equal(result.cords.length, 20);
   assert.ok(result.cords.every(c => c.curves.length === 1));
-  const empty = buildCordNetwork({ events: [], snapshots: [], diagnostics: [], totalRows: 0 });
+  const empty = buildFramedNetwork({ events: [], snapshots: [], diagnostics: [], totalRows: 0 });
   assert.ok(Number.isFinite(empty.width) && Number.isFinite(empty.height));
   const broken = structuredClone(eyes);
   broken.events[2].splitteeId = 'missing';
-  const failed = buildCordNetwork(broken);
+  const failed = buildFramedNetwork(broken);
   assert.equal(failed.junctions.length, 0);
   assert.match(failed.diagnostics[0], /Invalid or discontinuous/);
 });

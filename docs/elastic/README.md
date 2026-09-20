@@ -1,16 +1,18 @@
-# Spring network: split graph with a force-directed layout
+# Elastic model: split graph with a force-directed spring layout
 
-Research date: 2026-09-10. Status: **shipped.** Prototyped in [`experiment.mjs`](experiment.mjs) (results and the three corrections it forced are in [findings.md](findings.md)), then implemented in the app as [`src/domain/springNetwork.ts`](../../src/domain/springNetwork.ts) and made the default model of the Cord network view. Companion to [`docs/astra`](../astra/README.md), which supplies the graph. Method reference: [CrochetPARADE](https://github.com/stassev/CrochetPARADE) by Svetlin Tassev, read from its solver source [`graph.cpp`](https://github.com/stassev/CrochetPARADE/blob/main/graph.cpp) on the research date.
+> Renamed from `docs/spring` on 2026-09-20. In the app this is the **elastic** model (formerly "springs"); the comparison baseline is the **framed** model (formerly "harmonic", `docs/framed`). The names say what decides the shape: the material, or a frame. Both models are spring networks; the words "spring" and "harmonic" below refer to the physics, not to a model.
 
-**Recommendation: keep the astra graph (one vertex per split, one edge per cord segment) and replace the harmonic seed plus local relaxation with CrochetPARADE's layout.** Every edge becomes a spring with a rest length. A second set of weak, annealed springs, one per node pair at the graph-geodesic distance, unfolds the network from any starting position. Plain gradient descent minimises the total energy, and a short damped-dynamics pass polishes it.
+Research date: 2026-09-10. Status: **shipped.** Prototyped in [`experiment.mjs`](experiment.mjs) (results and the three corrections it forced are in [findings.md](findings.md)), then implemented in the app as [`src/domain/elasticNetwork.ts`](../../src/domain/elasticNetwork.ts) and made the default model of the Cord network view. Companion to [`docs/framed`](../framed/README.md), which supplies the graph. Method reference: [CrochetPARADE](https://github.com/stassev/CrochetPARADE) by Svetlin Tassev, read from its solver source [`graph.cpp`](https://github.com/stassev/CrochetPARADE/blob/main/graph.cpp) on the research date.
+
+**Recommendation: keep the framed model's graph (one vertex per split, one edge per cord segment) and replace its harmonic seed plus local relaxation with CrochetPARADE's layout.** Every edge becomes a spring with a rest length. A second set of weak, annealed springs, one per node pair at the graph-geodesic distance, unfolds the network from any starting position. Plain gradient descent minimises the total energy, and a short damped-dynamics pass polishes it.
 
 Three additions are needed that crochet did not need. A mesh of length-only springs shears freely, so the crossing angle between cords needs its own spring. Springs cannot keep two parallel segments apart, so cord thickness needs a short-range repulsion. Springs cannot tell a layout from its mirror image, so port orientation must be checked, and in 3D projected, after every step.
 
-Read this document top to bottom, then [findings.md](findings.md). Section 2 records what CrochetPARADE actually computes. Sections 4 and 5 define the ply-split model and solver as implemented. Section 11 lists the experiments that decide whether the model is worth integrating; the findings report which have been run.
+Read this document top to bottom, then [findings.md](findings.md). Section 2 records what CrochetPARADE actually computes. Sections 4 and 5 define the elastic model and solver as implemented. Section 11 lists the experiments that decide whether the model is worth integrating; the findings report which have been run.
 
-## 1. The graph is unchanged from astra
+## 1. The graph is unchanged from the framed model
 
-Construct the network exactly as [astra §2](../astra/system.md#2-construct-the-complete-cord-network) and [`audit-events.mjs`](../astra/audit-events.mjs) do:
+Construct the network exactly as [framed §2](../framed/system.md#2-construct-the-complete-cord-network) and [`audit-events.mjs`](../framed/audit-events.mjs) do:
 
 - One **junction vertex** per `SplitEvent`. Both cords pass through it. The splitter and the splittee centrelines meet there.
 - One **start terminal** and one **end terminal** per initial cord, including cords that are never split.
@@ -41,7 +43,7 @@ Sizes for the 20-cord **Eyes** source, from the same simulator:
 
 Vertices are `2·cords + events`; edges are `2·events + cords`. The pair count matters because CrochetPARADE's scaffold term touches every pair each iteration.
 
-Colours, face flags, source row numbers, and reference-image coordinates do not enter the graph or the energy. This is the same rule as astra.
+Colours, face flags, source row numbers, and reference-image coordinates do not enter the graph or the energy. This is the same rule as the framed model.
 
 ## 2. What CrochetPARADE actually does
 
@@ -122,7 +124,7 @@ No excluded-volume repulsion (`repulsion_radius` is a cutoff, not a hard core). 
 
 ## 3. Stitch to split
 
-| CrochetPARADE | Ply-split spring model |
+| CrochetPARADE | Ply-split elastic model |
 | --- | --- |
 | Stitch subgraph with named nodes | Split junction: one node in 2D, three nodes in 3D (§8) |
 | Connection `tail-length-head` | Segment edge with rest length from the pitch profile |
@@ -133,15 +135,15 @@ No excluded-volume repulsion (`repulsion_radius` is a cutoff, not a hard core). 
 | `ic_guess` coordinates | Wiring-diagram seed: gap position across, event order along |
 | `separate` for disjoint pieces | Not used; unused cords are pinned and reported as unintegrated |
 
-## 4. The spring model
+## 4. The elastic model
 
-Units are normalised by the cord diameter `d = 1`, as in astra.
+Units are normalised by the cord diameter `d = 1`, as in the framed model.
 
 ### 4.1 Profile
 
 | Symbol | Meaning | Default | Note |
 | --- | --- | ---: | --- |
-| `ℓ` | pitch: rest length between consecutive splits along a cord | `d / sin 2θ ≈ 1.05` | fitting parameter; astra's `pitchSS/TT/Mixed` collapsed to one value first |
+| `ℓ` | pitch: rest length between consecutive splits along a cord | `d / sin 2θ ≈ 1.05` | fitting parameter; the framed proposal's `pitchSS/TT/Mixed` collapsed to one value first |
 | `θ` | half crossing angle; cords run at `±θ` to the braid axis | 36° | `cot θ ≈ 1.35`, the current preview's default elongation |
 | `d_min` | excluded-volume distance between non-adjacent nodes | 0.9 | keeps digons and folds open |
 | `ℓ_T` | terminal edge rest length | `1.5 ℓ` | weight 0.25; the free tails are not fabric |
@@ -163,7 +165,7 @@ E_cord = Σ_e w_e · ((r_ij − ℓ_e) / d)²
          ℓ_e = ℓ (junction–junction), ℓ_T (terminal)
 ```
 
-Rest lengths may later depend on the two endpoint roles (splitter→splitter, splittee→splittee, role change), exactly astra's `pitchSS`, `pitchTT`, `pitchMixed`. Start with one value; add a role dependence only if a physical comparison demands it.
+Rest lengths may later depend on the two endpoint roles (splitter→splitter, splittee→splittee, role change), exactly the framed proposal's `pitchSS`, `pitchTT`, `pitchMixed`. Start with one value; add a role dependence only if a physical comparison demands it.
 
 One role-independent exception is required. When a cord's two consecutive visits are both at the same outer gap, the cord has reached the selvedge and turned back. In the regular lattice those two junctions are `2ℓ cos θ` apart, not `ℓ`. That segment gets rest length `ℓ_turn` and its midpoint bows outward as the selvedge loop. Giving it `ℓ` compresses every selvedge and shears the whole interior wide (findings §2).
 
@@ -200,7 +202,7 @@ Springs alone let the two parallel segments of a digon collapse onto one line an
 E_rep = w_rep · Σ_{i<j, not adjacent, r_ij < d_min} ((d_min − r_ij) / d)²
 ```
 
-Evaluate it with a uniform grid hash of cell size `d_min`; it is sparse. Exclude adjacent pairs and every pair of nodes that are ports of the same junction: two cords overlap where one passes through the other, and their in-ports sit only `ℓ sin θ ≈ 0.6 d` apart in a regular cell. Outside a junction neighbourhood the nearest nodes are about `d` apart, so this term is idle in healthy fabric and active only at collapsing digons, folds, and transition defects. To give the repulsion something to act on inside a segment, insert **one midpoint node per junction–junction edge** (astra §3, step 1). Midpoints carry the cord springs (rest `ℓ/2` each side) and repulsion, but not the scaffold term (§4.6), which keeps the pair count at the junction level.
+Evaluate it with a uniform grid hash of cell size `d_min`; it is sparse. Exclude adjacent pairs and every pair of nodes that are ports of the same junction: two cords overlap where one passes through the other, and their in-ports sit only `ℓ sin θ ≈ 0.6 d` apart in a regular cell. Outside a junction neighbourhood the nearest nodes are about `d` apart, so this term is idle in healthy fabric and active only at collapsing digons, folds, and transition defects. To give the repulsion something to act on inside a segment, insert **one midpoint node per junction–junction edge** (framed §3, step 1). Midpoints carry the cord springs (rest `ℓ/2` each side) and repulsion, but not the scaffold term (§4.6), which keeps the pair count at the junction level.
 
 ### 4.6 Scaffold springs (CrochetPARADE's core)
 
@@ -220,7 +222,7 @@ This term is the reason a random start unfolds into a strip. It must not survive
 
 Default: no fixed nodes. After the solve, translate the centroid to the origin, rotate the principal axis of the junction positions to vertical, and choose the mirror so that the port orientation (§7) matches the canonical wiring order at the majority of junctions.
 
-Options, mirroring astra's boundary profile: pin the start terminals to a line (`straight-anchor`) with a quadratic anchor term or as hard-fixed nodes; leave the end frontier free. Untouched cords are two-node components. CrochetPARADE would push them to `separate × max δ`; here they are pinned at their lane positions and reported as unintegrated material.
+Options, mirroring the framed proposal's boundary profile: pin the start terminals to a line (`straight-anchor`) with a quadratic anchor term or as hard-fixed nodes; leave the end frontier free. Untouched cords are two-node components. CrochetPARADE would push them to `separate × max δ`; here they are pinned at their lane positions and reported as unintegrated material.
 
 ### 4.8 Total energy
 
@@ -233,7 +235,7 @@ All terms are dimensionless in `d`. Only `E_scaffold` depends on the iteration c
 ## 5. Solver
 
 ```text
-build graph from Simulation (astra construction), insert midpoints
+build graph from Simulation (framed construction), insert midpoints
 compute δ_ij by Dijkstra over junction/terminal nodes
 x ← seed (wiring diagram) or uniform random in [−5, 5]^D with seed s
 η ← 0.1
@@ -269,13 +271,13 @@ The final layout is a local minimum of the physical energy **selected by the pat
 - Run the invariance test (§11) before trusting a motif. If the Eyes bands differ across seeds at the same residual, the physical springs are not determining the shape and the angle terms are too weak or the model is missing a constraint.
 - The `α_min` floor leaves a `10⁻³` bias toward the graph metric. The polish step removes it. Test `α_min ∈ {0, 10⁻³, 10⁻²}` to confirm the floor does not matter.
 
-The scaffold also makes the outer frame of astra §3 unnecessary. The strip width is not declared; it emerges from `ℓ`, `θ`, and the cord count. Whether that emergent width matches the photograph is a test, not an assumption.
+The scaffold also makes the outer frame of framed §3 unnecessary. The strip width is not declared; it emerges from `ℓ`, `θ`, and the cord count. Whether that emergent width matches the photograph is a test, not an assumption.
 
 ## 7. Chirality and folds
 
 Every term in §4 depends on distances only. A reflected copy of any node set satisfies the same distances, so the energy cannot distinguish a junction whose ports run `a⁻, b⁻, a⁺, b⁺` counter-clockwise from one where they run clockwise. A global reflection is harmless: it is the back view, and §4.7 fixes it. A **local** reflection is a fold: one junction mirrored inside unmirrored neighbours, with inverted cells around it. Springs in the neighbours resist it but do not forbid it.
 
-The check: at each junction take the four port directions (toward the adjacent midpoints), sort by cyclic port order, and require every signed turning angle to lie in `(0, π)` with total `2π`. This is `portConflicts` in `cordNetwork.ts`. Combined with the sampled crossing test, it is the acceptance gate. A layout that fails it is reported as unresolved with the offending junction IDs, following astra's rule: never fix a fold by moving one event by hand.
+The check: at each junction take the four port directions (toward the adjacent midpoints), sort by cyclic port order, and require every signed turning angle to lie in `(0, π)` with total `2π`. This is `portConflicts` in `cordNetwork.ts`. Combined with the sampled crossing test, it is the acceptance gate. A layout that fails it is reported as unresolved with the offending junction IDs, following the framed model's rule: never fix a fold by moving one event by hand.
 
 CrochetPARADE's answer in 3D is the projection of §2.7, which sets a signed normal from a cross product. The 3D template in §8 reuses that projection directly.
 
@@ -293,11 +295,11 @@ projection after every step:
     x_F = m + h·n,  x_B = m − h·n,  x_S = m             h = d/2
 ```
 
-The splittee passes the junction as two half-cords straddling the splitter, which is the equal-partition surface model of astra §5, now as geometry. Scaffold, straightness, and crossing springs attach to `S`. With equal bundles the template is symmetric under `n → −n`, so chirality does not change the shape, only which side is called front. Fix that side once from the seed. The front camera then sees `F` over `S` over `B` at every junction, and the reverse view is the same object from the other side. Unequal partitions, ply twist, and fabric thickness need input the simulator does not have, and stay out of scope.
+The splittee passes the junction as two half-cords straddling the splitter, which is the equal-partition surface model of framed §5, now as geometry. Scaffold, straightness, and crossing springs attach to `S`. With equal bundles the template is symmetric under `n → −n`, so chirality does not change the shape, only which side is called front. Fix that side once from the seed. The front camera then sees `F` over `S` over `B` at every junction, and the reverse view is the same object from the other side. Unequal partitions, ply twist, and fabric thickness need input the simulator does not have, and stay out of scope.
 
-## 9. Compared with the harmonic model
+## 9. Compared with the framed model
 
-| Aspect | Harmonic, `cordNetwork.ts` | Spring model |
+| Aspect | Framed, `framedNetwork.ts` | Elastic, `elasticNetwork.ts` |
 | --- | --- | --- |
 | Start | wiring seed with a fixed outer frame and side anchors | wiring seed or random; no frame |
 | Global coupling | Laplacian solve, linear, unique for the frame | annealed stress, nonlinear, path-dependent |
@@ -310,7 +312,7 @@ The splittee passes the junction as two half-cords straddling the splitter, whic
 | 3D | none | split template with normal projection |
 | Assumed by the frame | start and end fans, straight sides | nothing; edge turns must emerge |
 
-The harmonic model is the safer default while the spring model is unvalidated. The spring model is the one that can answer whether a packed strip with these pitches and angles produces the Eyes stagger on its own.
+The framed model is the safer default while the elastic model is unvalidated. The elastic model is the one that can answer whether a packed strip with these pitches and angles produces the Eyes stagger on its own.
 
 ## 10. Cost
 
@@ -320,7 +322,7 @@ Beyond roughly 3,000 junctions, cut the scaffold at a graph radius (CrochetPARAD
 
 ## 11. Experiments that decide
 
-Spring-specific tests, run before any of astra's photo phases:
+Elastic-specific tests, run before any of the framed plan's photo phases:
 
 | Test | Procedure | Pass condition |
 | --- | --- | --- |
@@ -330,16 +332,16 @@ Spring-specific tests, run before any of astra's photo phases:
 | Digons | lens width at events 61/78 and 75/91 | approximately `d_min`, both segments distinct |
 | Schedule sensitivity | `T ∈ {200, 500, 2000}`, `α_min ∈ {0, 10⁻³, 10⁻²}` | final layout unchanged within tolerance |
 | Pitch and angle sweep | `ℓ ∈ [1.0, 1.3]`, `θ ∈ [30°, 45°]` | motif arrangement is stable; only proportions change |
-| Removal experiment | drop source rows 5, 6, 15 (astra §6) | geometry changes although splittee colours do not |
+| Removal experiment | drop source rows 5, 6, 15 (framed §6) | geometry changes although splittee colours do not |
 | Empty and untouched | no events; a never-split cord | straight pinned cords, no fabricated surface |
 
-Results of the rows that have been run are in [findings.md](findings.md). Then apply astra's gates unchanged: [Phase 3](../astra/validation.md#phase-3--compare-to-the-real-photo) photo comparison on the central Eyes region and [Phase 4](../astra/validation.md#phase-4--prove-the-rule-is-general) generality cases. The minimum qualitative gate is the same: nested bands, staggered arrangement, edge continuation, traceable continuous cords, zero topology violations.
+Results of the rows that have been run are in [findings.md](findings.md). Then apply the framed plan's gates unchanged: [Phase 3](../framed/validation.md#phase-3--compare-to-the-real-photo) photo comparison on the central Eyes region and [Phase 4](../framed/validation.md#phase-4--prove-the-rule-is-general) generality cases. The minimum qualitative gate is the same: nested bands, staggered arrangement, edge continuation, traceable continuous cords, zero topology violations.
 
 ## 12. Implementation sequence
 
-1. **`docs/spring/experiment.mjs`** (done), run with `node --experimental-strip-types`, importing only the parser, simulator, and examples, like the astra audit. It builds the graph with the audit's incidence and port logic, runs the solver of §5, and writes surface and structure SVGs plus a metrics JSON per sample. No application files change.
+1. **`docs/elastic/experiment.mjs`** (done), run with `node --experimental-strip-types`, importing only the parser, simulator, and examples, like the framed audit. It builds the graph with the audit's incidence and port logic, runs the solver of §5, and writes surface and structure SVGs plus a metrics JSON per sample. No application files change.
 2. Restart invariance, chirality, digons, schedule and turn-length sensitivity are in the script and reported in [findings.md](findings.md). Shear, removal, and empty-input tests remain.
-3. **Done.** [`springNetwork.ts`](../../src/domain/springNetwork.ts) emits the existing `CordNetworkLayout`, so `renderCordNetworkSvg`, the surface patches, the face mirror, and the preview's inspector work unchanged. [`cordNetwork.worker.ts`](../../src/domain/cordNetwork.worker.ts) dispatches on a model name and streams intermediate layouts; the preview keeps `harmonic` selectable beside the default `springs`. Covered by [`tests/springNetwork.test.ts`](../../tests/springNetwork.test.ts).
+3. **Done.** [`elasticNetwork.ts`](../../src/domain/elasticNetwork.ts) emits the existing `CordNetworkLayout`, so `renderCordNetworkSvg`, the surface patches, the face mirror, and the preview's inspector work unchanged. [`cordNetwork.worker.ts`](../../src/domain/cordNetwork.worker.ts) dispatches on a model name and streams intermediate layouts; the preview keeps `framed` selectable beside the default `elastic`. Covered by [`tests/elasticNetwork.test.ts`](../../tests/elasticNetwork.test.ts).
 4. 3D template and reverse-face rendering only after step 3 holds.
 
 The app module differs from the experiment in two solver settings, both measured across all eight bundled samples: the scaffold is cut off at graph distance 8 rather than run over all pairs, and the main loop is 200 iterations rather than 500. Because the wiring seed is already a planar embedding, the long-range scaffold has little to unfold, and the shorter local one is 2.8x faster **and** leaves fewer topology conflicts. Everything else, including the physical solve, matches this document.
@@ -368,7 +370,7 @@ Parameter defaults to expose, all overridable from the experiment script:
 - One selvedge turn length for every edge turn, and straightness skipped across every lane-direction reversal.
 - Equal-partition split template in 3D.
 - Finished shape is a local minimum reached through a specific anneal, not a unique global optimum.
-- Simulator lane convention is a persistent material frame (astra §3 of findings). If that changes, normalise the events before building the graph, not the springs.
+- Simulator lane convention is a persistent material frame (framed findings §3). If that changes, normalise the events before building the graph, not the springs.
 
 ## 14. References and licence
 

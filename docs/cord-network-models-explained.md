@@ -1,10 +1,16 @@
-# How the harmonic and spring models work
+# How the framed and elastic models work
 
-Status: explainer. Last updated: 2026-09-19.
+Status: explainer. Last updated: 2026-09-20 (models renamed from "harmonic" and "springs" to **framed** and **elastic**; see §0).
 Audience: anyone with first-year maths and physics. You need vectors and distances, the idea that a derivative is a slope, Hooke's law for a spring, Newton's second law with a drag force, and the law of cosines. Nothing else is assumed.
-Purpose: explain why the app's Cord network view treats a ply-split braid as a network of springs, and how its two models, **harmonic** and **springs**, turn a list of splits into a drawing of the finished fabric.
+Purpose: explain why the app's Cord network view treats a ply-split braid as a network of springs, and how its two models, **framed** and **elastic**, turn a list of splits into a drawing of the finished fabric.
 
-The deeper references, in increasing depth: [harmonic/harmonic-model.md](harmonic/harmonic-model.md) (the maths behind the harmonic model), [spring/README.md](spring/README.md) (the full spring model), [spring/findings.md](spring/findings.md) (what the experiments showed). Source code: [`src/domain/cordNetwork.ts`](../src/domain/cordNetwork.ts) for the harmonic model, [`src/domain/springNetwork.ts`](../src/domain/springNetwork.ts) for the spring model. Every number in this document is taken from those files as they are today.
+The deeper references, in increasing depth: [framed/harmonic-embedding.md](framed/harmonic-embedding.md) (the maths behind the framed model's seed), [elastic/README.md](elastic/README.md) (the full elastic model), [elastic/findings.md](elastic/findings.md) (what the experiments showed). Source code: [`src/domain/framedNetwork.ts`](../src/domain/framedNetwork.ts) for the framed model, [`src/domain/elasticNetwork.ts`](../src/domain/elasticNetwork.ts) for the elastic model; the shared graph types, curve helpers, topology checks and renderer are in [`src/domain/cordNetwork.ts`](../src/domain/cordNetwork.ts). Every number in this document is taken from those files as they are today.
+
+## 0. The names
+
+The two models are named after **what decides the shape**. In the *framed* model the shape is imposed from outside: the network is pinned to a rectangular frame and every free node is averaged into it. In the *elastic* model the shape emerges from the material: cords have a natural length, a preferred crossing angle and a thickness, and the strip finds its own width.
+
+They used to be called "harmonic" and "springs", and both words still appear below, but only for the physics. *Harmonic* names the averaging rule (a harmonic function, §3.1) that seeds the framed model. *Spring* describes what every term in **both** energies is: the framed model is a network of zero-length springs, the elastic model a network of springs with natural lengths. So "harmonic versus spring" was never a contrast, and to a physics reader "harmonic" already means a spring; "framed versus elastic" says what actually differs.
 
 ## 1. The problem: a pattern is a list of events, not a picture
 
@@ -34,7 +40,7 @@ That is all the information there is. There are no coordinates, no lengths, no a
 Two things make this harder than filling in a grid:
 
 - **Cords are continuous.** Cord C01 above takes part in events 0, 1, 2 and 6. Whatever we draw, C01 must be one unbroken line passing through those four places in that order. A picture that colours cells independently can break this without noticing.
-- **The fabric is not a grid.** In a regular section the cords do form a neat diamond lattice, but wherever the pattern changes direction the cells are not four-sided. The audited block of the 20-cord Eyes pattern has 154 enclosed regions: 2 two-sided ones, 16 triangles, 132 four-sided and 4 five-sided ([harmonic/README.md](harmonic/README.md)). A grid has no place to put a triangle.
+- **The fabric is not a grid.** In a regular section the cords do form a neat diamond lattice, but wherever the pattern changes direction the cells are not four-sided. The audited block of the 20-cord Eyes pattern has 154 enclosed regions: 2 two-sided ones, 16 triangles, 132 four-sided and 4 five-sided ([framed/README.md](framed/README.md)). A grid has no place to put a triangle.
 
 ## 2. Why a network of springs
 
@@ -46,7 +52,7 @@ The first step in both models is the same. Build a **graph**:
 - one **start node** and one **end node** for every cord, for the loose tails;
 - one **edge** for every stretch of cord between two consecutive places that cord visits.
 
-Cord C01 visits `start → event 0 → event 1 → event 2 → event 6 → end`, so it contributes five edges. Every other cord in the example visits one event. Altogether the chevron graph has 23 nodes and 22 edges. The 20-cord Eyes block audited in [harmonic/README.md](harmonic/README.md) had 173 events, giving 213 nodes and 366 edges.
+Cord C01 visits `start → event 0 → event 1 → event 2 → event 6 → end`, so it contributes five edges. Every other cord in the example visits one event. Altogether the chevron graph has 23 nodes and 22 edges. The 20-cord Eyes block audited in [framed/README.md](framed/README.md) had 173 events, giving 213 nodes and 366 edges.
 
 Once the graph exists, the question "what does the braid look like?" becomes "where should each node go?" That is a *graph drawing* problem, and the edges being real pieces of cord tells us what a good drawing is: one where every edge has a sensible length, cords do not kink, cords do not pass through each other, and the crossings look like real ply-split crossings.
 
@@ -78,11 +84,11 @@ Everything below is a specific choice of springs and a specific way of finding w
 
 ### 2.4 Why two models
 
-The harmonic model came first. It is linear, has exactly one answer, is cheap, and has a mathematical guarantee that the drawing will not fold over itself. Those are good properties for a first attempt, and it is still in the app as the comparison baseline.
+The framed model came first. It is linear, has exactly one answer, is cheap, and has a mathematical guarantee that the drawing will not fold over itself. Those are good properties for a first attempt, and it is still in the app as the comparison baseline.
 
-But it needs a frame to hold the fabric open, and the frame dictates the width and the overall shape. The braid should get its width from how many cords it has and how thick they are, its edge loops from the cords turning, and its "eye" motifs from the crossings; none of that should be imposed from outside. The spring model was built to let those things emerge. It is the default view today.
+But it needs a frame to hold the fabric open, and the frame dictates the width and the overall shape. The braid should get its width from how many cords it has and how thick they are, its edge loops from the cords turning, and its "eye" motifs from the crossings; none of that should be imposed from outside. The elastic model was built to let those things emerge. It is the default view today.
 
-## 3. The harmonic model
+## 3. The framed model
 
 ### 3.1 The rule in one sentence
 
@@ -94,7 +100,7 @@ If node `i` is joined by edges to nodes `j₁, j₂, …`, then
 x_i = ( x_j₁ + x_j₂ + … ) / (number of neighbours)
 ```
 
-and the same for `y`. A function whose value at each point equals the average of its surroundings is called a **harmonic function** in mathematics; that is where the model's name comes from. Steady temperature in a metal plate obeys the same rule (each interior point is at the average temperature of its surroundings), and so does voltage in a network of equal resistors and the height of a soap film stretched on a wire loop. Physicists will also recognise the word from the harmonic oscillator, and that is not a coincidence, as the next section shows.
+and the same for `y`. A function whose value at each point equals the average of its surroundings is called a **harmonic function** in mathematics, so this step is a *harmonic embedding*; the app used to call the whole model "harmonic" after it. Steady temperature in a metal plate obeys the same rule (each interior point is at the average temperature of its surroundings), and so does voltage in a network of equal resistors and the height of a soap film stretched on a wire loop. Physicists will also recognise the word from the harmonic oscillator, and that is not a coincidence, as the next section shows.
 
 ### 3.2 It is a spring network with zero natural length
 
@@ -110,17 +116,17 @@ The force on node `i` is the sum over its neighbours of `(x_j − x_i)`. Setting
 Σ_j (x_j − x_i) = 0    ⇒    x_i = (Σ_j x_j) / (number of neighbours)
 ```
 
-which is exactly the averaging rule. So "solve the harmonic model" and "let a network of zero-length springs relax" are the same problem. A worked example: a free node joined to three fixed nodes at `(0, 0)`, `(2, 0)` and `(1, 3)` sits at `((0+2+1)/3, (0+0+3)/3) = (1, 1)`.
+which is exactly the averaging rule. So "solve the harmonic embedding" and "let a network of zero-length springs relax" are the same problem: the framed model is a spring network too, and the two models differ in what their springs want, not in whether there are springs. A worked example: a free node joined to three fixed nodes at `(0, 0)`, `(2, 0)` and `(1, 3)` sits at `((0+2+1)/3, (0+0+3)/3) = (1, 1)`.
 
 ### 3.3 Why a frame is needed
 
-Zero-length springs have one obvious flaw: if nothing is held still, every spring wants length zero and the whole network collapses to a single point. The model therefore **pins** some nodes and only lets the rest move. In [`buildCordNetwork`](../src/domain/cordNetwork.ts) the pinned nodes are:
+Zero-length springs have one obvious flaw: if nothing is held still, every spring wants length zero and the whole network collapses to a single point. The model therefore **pins** some nodes and only lets the rest move. In [`buildFramedNetwork`](../src/domain/framedNetwork.ts) the pinned nodes are:
 
 - every cord's start node, on a horizontal line at the top, in initial lane order;
 - every cord's end node, on a line at the bottom, in final lane order;
 - every junction at the two outermost gaps (the selvedges), on a vertical line at the left or right, spaced evenly in the order they occurred.
 
-Together these form a rectangle: the **frame**. Its height is set by the number of events per lane gap, scaled by the "Length / width" slider (`elongation`, default 1.35); its width is the number of cords plus a margin. Interior junctions are free and get averaged into it.
+Together these form a rectangle: the **frame** that gives the model its name. Its height is set by the number of events per lane gap, scaled by the "Length / width" slider (`elongation`, default 1.35); its width is the number of cords plus a margin. Interior junctions are free and get averaged into it.
 
 ### 3.4 Why this was a good first model
 
@@ -138,15 +144,17 @@ The energy `½ Σ |x_i − x_j|²` only says "be short". It has no idea how long
 
 The implementation adds a **spacing relaxation** (`relaxSpacing`) after the harmonic solve to reduce the first problem: every junction-to-junction edge becomes an ordinary spring with a real rest length (`√(1 + elongation²)`, the diagonal of one lattice cell in lane units) and the nodes take up to 80 small downhill steps. Each step is checked first: a move is rejected if it would flip or nearly flatten any of the angular sectors around a node, so the crossing-free property of the seed survives. This is a patch, not a physical model, and the UI note says as much: "junctions are averaged into a fixed strip frame, then spaced".
 
-### 3.6 The harmonic model in one picture
+### 3.6 The framed model in one picture
 
 A fishing net stretched over a rectangular frame. Pull the frame open and every knot settles to the average of its neighbours. The net can never tangle, but the frame decides the shape, and the mesh gets squeezed wherever the knots are dense.
 
-## 4. The spring model
+## 4. The elastic model
 
 ### 4.1 The idea
 
 Give every spring a **real** natural length and add the extra springs a mesh needs to hold its shape, then remove the frame entirely and let the fabric find its own width. The result is a minimum of a physical energy rather than an average inside a box.
+
+That is what *elastic* means here: the material has a shape it wants to return to, which a zero-length spring never has. Natural length, crossing angle, thickness and a ban on folding are all elastic properties, and they are exactly what the framed model lacks.
 
 The whole model is expressed in units of the cord diameter, `d = 1`. Colours, faces and source row numbers never enter it; they only affect how the finished drawing is painted.
 
@@ -190,7 +198,7 @@ Each term is a sum of ordinary springs, `E = ½ w (r − r₀)²`, over some set
 
 **Cord springs.** Every edge of the graph is a spring at the pitch length `ℓ`. To give the middle of each segment something to push against, one extra **midpoint node** is inserted in every junction-to-junction edge, so the segment is two springs of rest `ℓ/2`. The loose tails to the start and end nodes get rest `1.5ℓ` and weight 0.25, because they are not fabric.
 
-One exception matters. When a cord is split at an outer gap and its *next* split is at the same outer gap, the cord has reached the edge of the braid and turned back. In the rhombus lattice those two junctions are `2ℓ cos θ` apart, not `ℓ`, and the cord between them is a loop, longer than the straight line. That segment gets rest length `1.2 × 2ℓ cos θ ≈ 2.0`. Getting this wrong was one of the three corrections the experiment forced: with rest `ℓ` every selvedge was pulled together and the whole interior sheared wide to compensate ([spring/findings.md §2.2](spring/findings.md)).
+One exception matters. When a cord is split at an outer gap and its *next* split is at the same outer gap, the cord has reached the edge of the braid and turned back. In the rhombus lattice those two junctions are `2ℓ cos θ` apart, not `ℓ`, and the cord between them is a loop, longer than the straight line. That segment gets rest length `1.2 × 2ℓ cos θ ≈ 2.0`. Getting this wrong was one of the three corrections the experiment forced: with rest `ℓ` every selvedge was pulled together and the whole interior sheared wide to compensate ([elastic/findings.md §2.2](elastic/findings.md)).
 
 **Straightness springs.** A cord should not kink at a split. For every three consecutive nodes `p, j, n` along one cord, add a weak spring (weight 0.1) directly from `p` to `n` with rest length equal to `|pj| + |jn|`. The only way `p` and `n` can be that far apart is if `j` lies on the straight line between them, so this spring is satisfied exactly when the cord is straight and pulls it straight otherwise. It is skipped wherever the cord genuinely reverses direction: at selvedge turns and at the interior reversals in transition rows.
 
@@ -220,7 +228,7 @@ Only the last term depends on the step counter.
 
 ### 4.4 The starting layout
 
-Minimising a non-linear energy needs a starting guess, and a good one matters. The model starts from the **wiring diagram**: every junction is placed across the strip at the gap where it happened and along the strip in the order it happened, with terminals just beyond each end. This is a valid drawing of the exchange sequence with no crossings, so it already has the right topology and the right handedness; the solve only has to reshape it. Random starts were tried in the experiments: half of them unfold onto the same layout as the wiring seed, half fold irrecoverably ([spring/findings.md §4](spring/findings.md)). Random starts remain a test, not the production path.
+Minimising a non-linear energy needs a starting guess, and a good one matters. The model starts from the **wiring diagram**: every junction is placed across the strip at the gap where it happened and along the strip in the order it happened, with terminals just beyond each end. This is a valid drawing of the exchange sequence with no crossings, so it already has the right topology and the right handedness; the solve only has to reshape it. Random starts were tried in the experiments: half of them unfold onto the same layout as the wiring seed, half fold irrecoverably ([elastic/findings.md §4](elastic/findings.md)). Random starts remain a test, not the production path.
 
 ### 4.5 The solver, in two acts
 
@@ -240,7 +248,7 @@ m dv/dt = F − γ v            m = 1, γ = 0.1, time step 0.1
 
 Every node has unit mass, feels the spring forces, and is slowed by a weak drag. This runs for up to 3000 steps and stops as soon as the largest force on any node is below `2 × 10⁻³`. Then the drawing is moved to the origin, rotated so its long axis is vertical, flipped so the cords start at the top, and mirrored if needed so the majority of junctions are anticlockwise.
 
-Why momentum? Gradient descent is a ball rolling in honey: each step is proportional to the slope, so in a long, shallow valley it crawls. The energy of a strip has exactly such a valley: a **global shear**, where every cell tilts a little, changes the energy very slowly and gradient descent needs a number of steps that grows with the square of the strip length to relax it. Worse, the scaffold prefers a square lattice (both diagonals equal) and leaves the fabric sheared toward `90°`. With CrochetPARADE's ten over-damped polish steps the Eyes lattice stuck at a crossing angle of `89.7°`. With 3000 under-damped steps it reached `79.4°`, the gradient went to zero, and 6000 steps gave the identical answer ([spring/findings.md §2.1](spring/findings.md)). A ball with a little friction rolls along the valley floor and stops at the bottom.
+Why momentum? Gradient descent is a ball rolling in honey: each step is proportional to the slope, so in a long, shallow valley it crawls. The energy of a strip has exactly such a valley: a **global shear**, where every cell tilts a little, changes the energy very slowly and gradient descent needs a number of steps that grows with the square of the strip length to relax it. Worse, the scaffold prefers a square lattice (both diagonals equal) and leaves the fabric sheared toward `90°`. With CrochetPARADE's ten over-damped polish steps the Eyes lattice stuck at a crossing angle of `89.7°`. With 3000 under-damped steps it reached `79.4°`, the gradient went to zero, and 6000 steps gave the identical answer ([elastic/findings.md §2.1](elastic/findings.md)). A ball with a little friction rolls along the valley floor and stops at the bottom.
 
 ### 4.6 What comes out
 
@@ -248,14 +256,15 @@ Node positions become the drawing directly: each cord is drawn as a smooth curve
 
 With the default profile, the 8-cord chevron settles to a crossing angle of `72.0° ± 0.5°` with negligible strain. One block of Eyes comes out at `78.5° ± 16.4°`, with the spread concentrated in the transition rows, where the pattern's direction changes leave a lattice defect that a flat spring sheet cannot fully absorb. The full Eyes motif, a nested eye in the centre and half eyes at each edge, emerges from colours and connectivity alone, and over three blocks the eyes alternate between the centre and side-by-side pairs, which is what the photograph shows.
 
-### 4.7 The spring model in one picture
+### 4.7 The elastic model in one picture
 
 A mesh of real springs lying on a table with no frame. It finds its own width, bulges into loops where cords turn at the edges, and settles into a diamond lattice wherever the pattern lets it. Shake it a little at the end so it does not get stuck part-way down.
 
 ## 5. Side by side
 
-| | Harmonic | Springs |
+| | Framed | Elastic |
 | --- | --- | --- |
+| Technical name | harmonic (Tutte) embedding, then spacing | rest-length spring network, force-directed and annealed |
 | Springs | zero natural length | real natural lengths, plus straightness, angle, repulsion, orientation |
 | What holds it open | a pinned rectangular frame | nothing; the rest lengths and crossing angle do |
 | Width of the strip | set by the cord count | emerges from `ℓ`, `θ` and the cord count |
@@ -271,15 +280,15 @@ A mesh of real springs lying on a table with no frame. It finds its own width, b
 ## 6. What neither model is
 
 - **Not a material simulation.** There is no twist, no friction, no cord stiffness in bending beyond the straightness spring, and no tension from the maker's hands. The pitch `ℓ`, the angle `θ` and the turn length are packing idealisations, not measurements.
-- **Flat.** Both models live in two dimensions. Real fabric can spend strain in the third dimension; the wide junctions in the Eyes transition rows are probably where the real braid puckers. A 3D extension is sketched in [spring/README.md §8](spring/README.md) but not built.
-- **Colour-blind.** Colours, faces and row numbers never enter either energy. The motif has to come from the structure. That is deliberate: a removal experiment showed that dropping three rows of Eyes changes 35 later pairings without changing a single visible colour, so colour alone cannot be the model ([harmonic/README.md](harmonic/README.md)).
-- **Not validated against a photograph yet.** The spring model produces the Eyes motif qualitatively. Whether its proportions match the real braid is a measurement still to be made.
+- **Flat.** Both models live in two dimensions. Real fabric can spend strain in the third dimension; the wide junctions in the Eyes transition rows are probably where the real braid puckers. A 3D extension is sketched in [elastic/README.md §8](elastic/README.md) but not built.
+- **Colour-blind.** Colours, faces and row numbers never enter either energy. The motif has to come from the structure. That is deliberate: a removal experiment showed that dropping three rows of Eyes changes 35 later pairings without changing a single visible colour, so colour alone cannot be the model ([framed/README.md](framed/README.md)).
+- **Not validated against a photograph yet.** The elastic model produces the Eyes motif qualitatively. Whether its proportions match the real braid is a measurement still to be made.
 
 ## 7. Symbols
 
 | Symbol | Meaning | Default |
 | --- | --- | ---: |
-| `d` | cord diameter, the unit of length in the spring model | 1 |
+| `d` | cord diameter, the unit of length in the elastic model | 1 |
 | `θ` | half the crossing angle; cords run at `±θ` to the braid axis | `≈ 36.5°` from the slider value `cot θ = 1.35` |
 | `ℓ` | pitch: natural length of a cord segment between consecutive splits, `d / sin 2θ` | `≈ 1.05` |
 | `ℓ_turn` | natural length of a selvedge turn, `1.2 × 2ℓ cos θ` | `≈ 2.0` |

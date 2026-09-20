@@ -1,5 +1,7 @@
 # Finished appearance from split events
 
+> Renamed from `docs/harmonic` on 2026-09-20 (and from `docs/astra` before that). In the app this is the **framed** model (formerly "harmonic"): a harmonic embedding inside a fixed strip frame, then a spacing pass. The default model, **elastic** (formerly "springs"), is in [`docs/elastic`](../elastic/README.md). "Harmonic" below refers to the embedding step, not to the model.
+
 Research date: 2026-09-09. Reference: [`eyes.webp`](../../public/expected-layouts/eyes.webp).
 
 **Recommendation: reconstruct a network of continuous cords, solve its packed geometry, then render the local ply openings.** The eyes should emerge from cord colours and connectivity. They should not be drawn as predefined eye shapes or positioned as independent coloured cells.
@@ -12,12 +14,12 @@ Read these in order:
 2. [Proposed system](system.md): data contracts, geometric solver, split rendering, boundaries, and failure handling.
 3. [Validation and implementation sequence](validation.md): how to establish that the result actually predicts this photograph and generalises beyond Eyes.
 
-Companion reading: [Physics behind the harmonic seed](harmonic-model.md) derives the spring/electrical-network equilibrium behind system.md §3's harmonic embedding and states exactly what that linear step does and does not guarantee.
+Companion reading: [Physics behind the harmonic seed](harmonic-embedding.md) derives the spring/electrical-network equilibrium behind system.md §3's harmonic embedding and states exactly what that linear step does and does not guarantee.
 
 The executable part of this investigation is a topology audit, **not a completed finished-product renderer**. It confirms that the event data can produce an ordered planar cord network under the simulator's current coordinate convention. It does not establish that the proposed geometric solver reproduces the photographed fabric.
 
 ```sh
-node --experimental-strip-types docs/harmonic/audit-events.mjs
+node --experimental-strip-types docs/framed/audit-events.mjs
 ```
 
 This writes [`event-audit.json`](event-audit.json), including the input text and hashes, every cord's event sequence, every connecting segment, face boundaries, and removal experiments. It imports no finished-layout code and changes no application files.
