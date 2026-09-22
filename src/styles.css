@@ -78,6 +78,10 @@ textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.1
 .toggle-group { padding: 3px; border: 1px solid rgba(23,41,61,.17); border-radius: 2px; background: #efe1c4; }
 .toggle-group button { border: 0; padding: 6px 9px; color: #705e4b; background: transparent; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .toggle-group button.is-active { color: #fff6e4; background: #17293d; box-shadow: 2px 2px 0 #d3a448; }
+.length-control { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 9px; }
+.length-control .eyebrow { color: #896f58; }
+.repeat-control { display: flex; align-items: center; gap: 9px; color: #705e4b; font-size: 11px; white-space: nowrap; }
+.repeat-control input { width: 118px; accent-color: #d3a448; }
 .canvas-meta { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #786b5b; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
 .diagram-frame { position: relative; min-height: 360px; overflow: auto; border: 1px solid rgba(23,41,61,.24); background: linear-gradient(135deg, rgba(23,41,61,.035) 25%, transparent 25%) 0 0/16px 16px, #f0e3c8; }
 .diagram-frame svg { display: block; width: 100%; min-width: 700px; min-height: 360px; }
@@ -161,11 +165,11 @@ textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.1
 
 .control-deck { display: grid; grid-template-columns: auto 1fr auto; gap: 28px; align-items: center; max-width: 1500px; margin: 18px auto 0; padding: 0 8px; }
 .preview-controls { display: flex; flex-wrap: wrap; gap: 24px; }
-.toggle-group--inverse { margin-top: 7px; border-color: rgba(245,233,205,.28); background: rgba(245,233,205,.07); }
-.toggle-group--inverse button { color: #c7bba1; }
-.toggle-group--inverse button.is-active { color: #17293d; background: #d3a448; box-shadow: 2px 2px 0 rgba(215,107,82,.75); }
-.repeat-control, .angle-control { display: flex; align-items: center; gap: 11px; margin-top: 7px; color: #f5e9cd; font-size: 11px; }
-.repeat-control input, .angle-control input { width: 118px; accent-color: #d3a448; }
+/* Braid and Cord network views have no finished-geometry sliders, so drop the empty column. */
+.preview-controls:empty { display: none; }
+.control-deck:has(> .preview-controls:empty) { grid-template-columns: 1fr auto; }
+.angle-control { display: flex; align-items: center; gap: 11px; margin-top: 7px; color: #f5e9cd; font-size: 11px; }
+.angle-control input { width: 118px; accent-color: #d3a448; }
 .method-note { max-width: 560px; color: #c7bba1; font-size: 10px; line-height: 1.65; }
 .export-button { border: 1px solid #d3a448; padding: 10px 12px; color: #17293d; background: #d3a448; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; box-shadow: 3px 3px 0 rgba(215,107,82,.75); }
 .export-button:hover { background: #f3c967; }
@@ -181,11 +185,11 @@ textarea:focus { border-color: #d76b52; box-shadow: 0 0 0 3px rgba(215,107,82,.1
   .masthead-actions { grid-column: 1 / -1; justify-self: start; flex-wrap: wrap; justify-content: flex-start; }
   .editor-panel, .canvas-panel { padding: 20px; }
   .canvas-heading { align-items: flex-start; flex-direction: column; }
-  .toolbar { justify-content: flex-start; }
+  .toolbar, .length-control { justify-content: flex-start; }
   .canvas-meta { flex-direction: column; }
   .finished-layout-export { align-items: stretch; flex-direction: column; }
   .finished-layout-export button { align-self: flex-start; }
-  .control-deck { grid-template-columns: 1fr; gap: 14px; padding: 4px; }
+  .control-deck, .control-deck:has(> .preview-controls:empty) { grid-template-columns: 1fr; gap: 14px; padding: 4px; }
   .method-note { order: 3; }
   .export-button { justify-self: start; }
 }

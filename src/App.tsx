@@ -256,6 +256,17 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
                   <button className={!showEventIds ? 'is-active' : ''} onClick={() => setShowEventIds(false)}>Hide IDs</button>
                 </div>
               )}
+              <div className="length-control">
+                <span className="eyebrow">Preview length</span>
+                <div className="toggle-group" aria-label="Preview length">
+                  <button className={lengthMode === 'cycle' ? 'is-active' : ''} onClick={() => setLengthMode('cycle')}>Full cycle</button>
+                  <button className={lengthMode === 'manual' ? 'is-active' : ''} onClick={() => setLengthMode('manual')}>Manual</button>
+                </div>
+                <label className="repeat-control">
+                  <input aria-label="Preview repeats" type="range" min="1" max="16" value={previewRepeats} disabled={lengthMode === 'cycle' && Boolean(fullCycle)} onChange={(event) => setPreviewRepeats(Number(event.target.value))} />
+                  <span>{describeLength(lengthMode, repeats, fullCycle, simulation.totalRows)}</span>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -312,7 +323,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
             ) : view === 'finished-dev' ? (
               <p className="finished-caption">Development preview: transition edges extend to their intersection in the neighbouring column, filling the extra triangle with the continuing cord’s colour.</p>
             ) : (
-              <p className="finished-caption">The braid view always draws a single repeat, regardless of the preview length control below — switch to a Finished view to see the pattern build across multiple repeats. Each cord keeps its colour along its whole path, and each splitter stays visible behind its splittee at their crossing.</p>
+              <p className="finished-caption">The braid view always draws a single repeat, regardless of the preview length control above — switch to a Finished view to see the pattern build across multiple repeats. Each cord keeps its colour along its whole path, and each splitter stays visible behind its splittee at their crossing.</p>
             )}
           </details>
         </section>
@@ -320,17 +331,6 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
 
       <footer className="control-deck">
         <div className="preview-controls">
-          <div>
-            <p className="eyebrow">Preview length</p>
-            <div className="toggle-group toggle-group--inverse">
-              <button className={lengthMode === 'cycle' ? 'is-active' : ''} onClick={() => setLengthMode('cycle')}>Full cycle</button>
-              <button className={lengthMode === 'manual' ? 'is-active' : ''} onClick={() => setLengthMode('manual')}>Manual</button>
-            </div>
-            <label className="repeat-control">
-              <input aria-label="Preview repeats" type="range" min="1" max="16" value={previewRepeats} disabled={lengthMode === 'cycle' && Boolean(fullCycle)} onChange={(event) => setPreviewRepeats(Number(event.target.value))} />
-              <span>{describeLength(lengthMode, repeats, fullCycle, simulation.totalRows)}</span>
-            </label>
-          </div>
           {view !== 'braid' && view !== 'cord-network' && <>
             <div>
               <p className="eyebrow">Cord slant</p>
