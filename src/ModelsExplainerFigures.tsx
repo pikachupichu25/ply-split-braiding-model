@@ -7,12 +7,13 @@ import { curvePath, curvePoint } from './domain/cordNetwork';
 import type { CordNetworkLayout } from './domain/cordNetwork';
 import { buildFramedNetwork } from './domain/framedNetwork';
 import { buildElasticNetwork, resolveElasticProfile } from './domain/elasticNetwork';
+import { buildPackedNetwork, resolvePackedProfile } from './domain/packedNetwork';
 import { buildColorMap } from './domain/colourway';
 import type { SplitEvent } from './domain/types';
 
 /**
- * Figures for the model explainer (#/models). The two "live" figures run the real
- * framed and elastic solvers on the bundled chevron sample; nothing here is a mock-up.
+ * Figures for the model explainer (#/models). The "live" figures run the real
+ * framed, elastic and packed solvers on the bundled chevron sample; nothing here is a mock-up.
  */
 
 const ink = '#17293d', paper = '#f8f0de', gold = '#d3a448', rust = '#d76b52', teal = '#77b6c9';
@@ -388,6 +389,53 @@ export function ElasticSolveFigure() {
         {[60, 70, 80, 90, 100].map(a => <g key={a}><line x1={gauge(a)} y1={17} x2={gauge(a)} y2={27} className="mx-axis" /><text x={gauge(a)} y={42} className="mx-label" textAnchor="middle">{a}°</text></g>)}
         <line x1={gauge(data.target)} y1={8} x2={gauge(data.target)} y2={36} stroke={rust} strokeWidth={2} /><text x={gauge(data.target)} y={6} className="mx-label" textAnchor="middle" fill={rust}>target</text>
         <circle cx={gauge(frame.angle)} cy={22} r={7} fill={frame.phase === 'unfold' ? teal : gold} stroke={ink} strokeWidth={1.4} style={{ transition: 'cx .25s ease-out' }} />
+      </svg>
+    </div>
+  </Figure>;
+}
+
+// ---------------------------------------------------------------- Fig 9: the packed solver
+export function PackedSolveFigure() {
+  const data = useMemo(() => {
+    // Four blocks keeps the live solve quick; the shape is the same as the eight-block runs in docs/packed.
+    const simulation = simulateChevron(4), events = simulation.events, profile = resolvePackedProfile({});
+    const frames: Frame[] = [];
+    const seed = buildElasticNetwork(simulation, {});
+    frames.push({ label: 'elastic seed · before any step', phase: 'seed', layout: seed, angle: meanCrossingAngle(seed, events) });
+    const final = buildPackedNetwork(simulation, {}, (progress, build) => {
+      if (progress <= 0.15) return;                                  // the seed frame is already in
+      const layout = build();
+      frames.push({ label: `tighten · step ${layout.quality.relaxationSteps}`, phase: 'settle', layout, angle: meanCrossingAngle(layout, events) });
+    });
+    frames.push({ label: `settled · step ${final.quality.relaxationSteps}`, phase: 'done', layout: final, angle: meanCrossingAngle(final, events) });
+    const width = Math.max(...frames.map(f => f.layout.width)), height = Math.max(...frames.map(f => f.layout.height));
+    return { frames, width, height, pull: profile.pull, target: 2 * deg(profile.theta) };
+  }, []);
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setInterval(() => setIndex(i => { if (i >= data.frames.length - 1) { setPlaying(false); return i; } return i + 1; }), 420);
+    return () => window.clearInterval(id);
+  }, [playing, data.frames.length]);
+  const frame = data.frames[index], last = data.frames.length - 1;
+  const gauge = (a: number) => 60 + clamp((a - 55) / 50, 0, 1) * 440;
+  return <Figure n={9} title="The packed model on the chevron, four blocks, step by step" live
+    caption={<>Every frame is a real intermediate layout from <code>buildPackedNetwork</code>. It starts from the elastic layout and tightens: the cords pull straight, the tubes press together until they touch, and the strip narrows and lengthens under the working pull. Nothing here has a rest length, so the spacing you end up seeing between splits was computed, not assumed. The gauge shows the crossing angle settling above the sheet target — an eight-cord strip is stiffened toward 90° by its own selvedges, and a wider braid lands closer to the mark.</>}
+    controls={<>
+      <button type="button" className="mx-button" onClick={() => { if (index >= last) setIndex(0); setPlaying(p => !p); }}>{playing ? 'pause' : index >= last ? 'replay' : 'play'}</button>
+      <label className="mx-slider">frame<input type="range" min={0} max={last} value={index} onChange={e => { setPlaying(false); setIndex(Number(e.target.value)); }} aria-label="Packed solver frame" /><output>{index} / {last}</output></label>
+      <Readout items={[['stage', frame.label], ['mean crossing angle', `${frame.angle.toFixed(1)}° (sheet target ${data.target.toFixed(1)}°)`], ['working pull f/T', data.pull.toFixed(3)]]} />
+    </>}>
+    <div className="mx-solve">
+      <svg viewBox={`0 0 ${data.width} ${data.height}`} className="mx-svg mx-svg--network" role="img" aria-label={`Packed layout, ${frame.label}`}>
+        <NetworkDrawing layout={frame.layout} offset={{ x: (data.width - frame.layout.width) / 2, y: (data.height - frame.layout.height) / 2 }} />
+      </svg>
+      <svg viewBox="0 0 560 44" className="mx-svg mx-gauge" role="img" aria-label="Crossing angle gauge">
+        <line x1={60} y1={22} x2={500} y2={22} className="mx-axis" />
+        {[60, 70, 80, 90, 100].map(a => <g key={a}><line x1={gauge(a)} y1={17} x2={gauge(a)} y2={27} className="mx-axis" /><text x={gauge(a)} y={42} className="mx-label" textAnchor="middle">{a}°</text></g>)}
+        <line x1={gauge(data.target)} y1={8} x2={gauge(data.target)} y2={36} stroke={rust} strokeWidth={2} /><text x={gauge(data.target)} y={6} className="mx-label" textAnchor="middle" fill={rust}>sheet</text>
+        <circle cx={gauge(frame.angle)} cy={22} r={7} fill={gold} stroke={ink} strokeWidth={1.4} style={{ transition: 'cx .25s ease-out' }} />
       </svg>
     </div>
   </Figure>;

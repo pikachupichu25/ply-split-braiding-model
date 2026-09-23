@@ -7,10 +7,13 @@ import type { Face, Simulation } from './domain/types';
 import './cordNetworkPreview.css';
 
 const photoColors = { A: '#655069', B: '#d9f2e8', C: '#1da9d2' };
-const modelLabels: Record<CordNetworkModel, string> = { elastic: 'elastic', framed: 'framed' };
+const modelLabels: Record<CordNetworkModel, string> = { elastic: 'elastic', framed: 'framed', packed: 'packed' };
+/** Above this many splits the packed solve cannot settle inside its time budget, so it is offered read-only. */
+const packedLimit = 300;
 const modelNotes: Record<CordNetworkModel, string> = {
   elastic: 'Elastic: every cord segment is a spring at its natural length, port springs set the crossing angle, and the drawing is a minimum of that energy. Width, selvedge turns, and eye placement emerge; nothing is anchored to a frame.',
   framed: 'Framed: junctions are averaged into a fixed strip frame (a harmonic embedding), then spaced. Width is set by the cord count.',
+  packed: 'Packed: cords are incompressible tubes under a constant pull, so they are as straight and as tightly packed as their neighbours allow. Nothing has a rest length; the pitch, the width and the selvedge loops are results, and a working pull on the cord ends sets the crossing angle. Slow, and still research code.',
 };
 
 export default function CordNetworkPreview({ simulation, colors, mirrorFace, referenceName, referenceImage }: {
@@ -22,6 +25,7 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
   referenceImage?: SamplePatternImage;
 }) {
   const [model, setModel] = useState<CordNetworkModel>('elastic');
+  const tooLongForPacked = simulation.events.length > packedLimit;
   const [elongation, setElongation] = useState(1.35);
   const [diameter, setDiameter] = useState(1.35);
   const [mode, setMode] = useState<'surface' | 'cords' | 'structure'>('surface');
@@ -33,6 +37,7 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<number>();
   useEffect(() => { setCompare(Boolean(referenceImage)); }, [referenceImage]);
+  useEffect(() => { if (model === 'packed' && tooLongForPacked) setModel('elastic'); }, [model, tooLongForPacked]);
 
   useEffect(() => {
     setLayout(undefined); setError(''); setSelected(undefined); setProgress(0);
@@ -45,7 +50,8 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
     };
     worker.onerror = () => setError('The cord network worker could not finish. Reload the page to try again.');
     // The elastic geometry is packed at one cord diameter, so the thickness slider only scales its rendering.
-    const request: CordNetworkRequest = { simulation, model, options: model === 'elastic' ? { elongation, diameter: diameter / 1.35 } : { elongation, diameter } };
+    // The elastic and packed geometries are packed at one cord diameter, so the slider only scales their rendering.
+    const request: CordNetworkRequest = { simulation, model, options: model === 'framed' ? { elongation, diameter } : { elongation, diameter: diameter / 1.35 } };
     worker.postMessage(request);
     return () => worker.terminate();
   }, [simulation, elongation, diameter, model]);
@@ -74,7 +80,9 @@ export default function CordNetworkPreview({ simulation, colors, mirrorFace, ref
     </div>
     <div className="network-controls">
       <div className="toggle-group" aria-label="Cord network model">
-        {(['elastic', 'framed'] as const).map(value => <button key={value} aria-pressed={model === value} className={model === value ? 'is-active' : ''} onClick={() => setModel(value)}>{modelLabels[value]}</button>)}
+        {(['elastic', 'framed', 'packed'] as const).map(value => <button key={value} aria-pressed={model === value} className={model === value ? 'is-active' : ''}
+          disabled={value === 'packed' && tooLongForPacked} title={value === 'packed' && tooLongForPacked ? `The packed solve is limited to ${packedLimit} splits; this preview has ${simulation.events.length}. Shorten the preview to try it.` : undefined}
+          onClick={() => setModel(value)}>{modelLabels[value]}</button>)}
       </div>
       <div className="toggle-group" aria-label="Cord network rendering">
         {(['surface', 'cords', 'structure'] as const).map(value => <button key={value} aria-pressed={mode === value} className={mode === value ? 'is-active' : ''} onClick={() => setMode(value)}>{value}</button>)}

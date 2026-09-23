@@ -1,14 +1,14 @@
-# How the framed and elastic models work
+# How the framed, elastic and packed models work
 
-Status: explainer. Last updated: 2026-09-20 (models renamed from "harmonic" and "springs" to **framed** and **elastic**; see §0).
+Status: explainer. Last updated: 2026-09-23 (a third model, **packed**, joined the view; see §4.5 and [docs/packed](packed/README.md)).
 Audience: anyone with first-year maths and physics. You need vectors and distances, the idea that a derivative is a slope, Hooke's law for a spring, Newton's second law with a drag force, and the law of cosines. Nothing else is assumed.
-Purpose: explain why the app's Cord network view treats a ply-split braid as a network of springs, and how its two models, **framed** and **elastic**, turn a list of splits into a drawing of the finished fabric.
+Purpose: explain why the app's Cord network view treats a ply-split braid as a physical network, and how its three models, **framed**, **elastic** and **packed**, turn a list of splits into a drawing of the finished fabric. The first two are spring networks and are the subject of most of this document; the third replaces every spring with contact and tension, and is summarised in §4.5.
 
-The deeper references, in increasing depth: [framed/harmonic-embedding.md](framed/harmonic-embedding.md) (the maths behind the framed model's seed), [elastic/README.md](elastic/README.md) (the full elastic model), [elastic/findings.md](elastic/findings.md) (what the experiments showed). Source code: [`src/domain/framedNetwork.ts`](../src/domain/framedNetwork.ts) for the framed model, [`src/domain/elasticNetwork.ts`](../src/domain/elasticNetwork.ts) for the elastic model; the shared graph types, curve helpers, topology checks and renderer are in [`src/domain/cordNetwork.ts`](../src/domain/cordNetwork.ts). Every number in this document is taken from those files as they are today.
+The deeper references, in increasing depth: [framed/harmonic-embedding.md](framed/harmonic-embedding.md) (the maths behind the framed model's seed), [elastic/README.md](elastic/README.md) (the full elastic model), [elastic/findings.md](elastic/findings.md) (what its experiments showed), [packed/README.md](packed/README.md) and [packed/findings.md](packed/findings.md) (the packed model and its results). Source code: [`src/domain/framedNetwork.ts`](../src/domain/framedNetwork.ts), [`src/domain/elasticNetwork.ts`](../src/domain/elasticNetwork.ts) and [`src/domain/packedNetwork.ts`](../src/domain/packedNetwork.ts); the shared graph types, curve helpers, topology checks and renderer are in [`src/domain/cordNetwork.ts`](../src/domain/cordNetwork.ts). Every number in this document is taken from those files as they are today.
 
 ## 0. The names
 
-The two models are named after **what decides the shape**. In the *framed* model the shape is imposed from outside: the network is pinned to a rectangular frame and every free node is averaged into it. In the *elastic* model the shape emerges from the material: cords have a natural length, a preferred crossing angle and a thickness, and the strip finds its own width.
+The models are named after **what decides the shape**. In the *framed* model the shape is imposed from outside: the network is pinned to a rectangular frame and every free node is averaged into it. In the *elastic* model the shape emerges from the material: cords have a natural length, a preferred crossing angle and a thickness, and the strip finds its own width. In the *packed* model it emerges from contact: the cords have a width they cannot lose and a pull along their length, and everything else — the pitch, the loops, the width of the strip — is what those two facts leave room for.
 
 They used to be called "harmonic" and "springs", and both words still appear below, but only for the physics. *Harmonic* names the averaging rule (a harmonic function, §3.1) that seeds the framed model. *Spring* describes what every term in **both** energies is: the framed model is a network of zero-length springs, the elastic model a network of springs with natural lengths. So "harmonic versus spring" was never a contrast, and to a physics reader "harmonic" already means a spring; "framed versus elastic" says what actually differs.
 
@@ -46,7 +46,7 @@ Two things make this harder than filling in a grid:
 
 ### 2.1 Turn the events into a network
 
-The first step in both models is the same. Build a **graph**:
+The first step is the same in all three models. Build a **graph**:
 
 - one **junction node** for every split event, where the two cords meet;
 - one **start node** and one **end node** for every cord, for the loose tails;
@@ -63,7 +63,7 @@ Real cords settle into the shape that costs the least energy. A cord that is str
 1. write down an **energy** `E(positions)` that is low for drawings with the properties above and high for drawings without them;
 2. find the positions that make `E` as small as possible.
 
-This is the whole strategy. Both models do exactly this; they differ in *which* energy and *how* they minimise it. The idea is not new: [CrochetPARADE](https://github.com/stassev/CrochetPARADE) lays out crochet this way, and Gray, Bell and Kobourov ([arXiv:2406.13800](https://arxiv.org/abs/2406.13800)) do the same for knitting. Ply-split braiding is another textile whose structure is a list of local interactions, so the same approach fits.
+This is the whole strategy. All three models do exactly this; they differ in *which* energy and *how* they minimise it. (The packed model's energy is not made of springs, but it is still an energy minimised the same way; see §4.5.) The idea is not new: [CrochetPARADE](https://github.com/stassev/CrochetPARADE) lays out crochet this way, and Gray, Bell and Kobourov ([arXiv:2406.13800](https://arxiv.org/abs/2406.13800)) do the same for knitting. Ply-split braiding is another textile whose structure is a list of local interactions, so the same approach fits.
 
 ### 2.3 The physics you need
 
@@ -252,9 +252,19 @@ Why momentum? Gradient descent is a ball rolling in honey: each step is proporti
 
 ### 4.6 What comes out
 
-Node positions become the drawing directly: each cord is drawn as a smooth curve through its junctions and midpoints, and at each junction the splittee's colour is painted over the splitter, because the splittee's plies pass in front of and behind the splitter. The same two checks run on both models' output afterwards: sampled curve crossings (`findCurveCrossings`) and port order at every junction (`portConflicts`). A layout that fails either is reported as unresolved, with the offending junctions listed; nothing is ever fixed by moving one event by hand.
+Node positions become the drawing directly: each cord is drawn as a smooth curve through its junctions and midpoints, and at each junction the splittee's colour is painted over the splitter, because the splittee's plies pass in front of and behind the splitter. The same two checks run on every model's output afterwards: sampled curve crossings (`findCurveCrossings`) and port order at every junction (`portConflicts`). A layout that fails either is reported as unresolved, with the offending junctions listed; nothing is ever fixed by moving one event by hand.
 
 With the default profile, the 8-cord chevron settles to a crossing angle of `72.0° ± 0.5°` with negligible strain. One block of Eyes comes out at `78.5° ± 16.4°`, with the spread concentrated in the transition rows, where the pattern's direction changes leave a lattice defect that a flat spring sheet cannot fully absorb. The full Eyes motif, a nested eye in the centre and half eyes at each edge, emerges from colours and connectivity alone, and over three blocks the eyes alternate between the centre and side-by-side pairs, which is what the photograph shows.
+
+### 4.5 The packed model, in short
+
+The elastic model has to be told a segment's length, a selvedge loop's length and a crossing's preferred angle. The **packed** model asks what is left if none of them is given. A cord keeps only two properties: a width of one diameter that cannot be compressed and cannot overlap another cord, and a constant pull along its length, which makes it as short and as straight as its neighbours allow. Pressing the fabric compact needs no term of its own, because in a threaded network it is the same thing as pulling every cord tight.
+
+The pitch is then a result rather than a parameter, and it comes out at `d / sin φ` for the realised crossing angle `φ`, within 0.2 % — which is the value §4.2 assumes. The selvedge loop shapes itself, with no `ℓ_turn`. On Eyes the model removes every topology conflict its elastic seed arrives with, because tubes that cannot pass through each other cannot fold.
+
+One thing cannot emerge. Both packing and tension prefer a square lattice, and in between lies a whole family of packed configurations, one per angle, all with the cords straight and touching: the lattice is a scissor mechanism, and with nothing else the strip is floppy. The packed model selects a member of that family with the **working pull** the maker keeps on the braid, `f / T = cos 2θ / cos³ θ`, which is its only dial. A real strip is stiffer in shear than an infinite sheet because of its selvedges, so the same pull gives 82° on eight cords and 75° on twenty-four, and a patterned fabric such as Eyes adds a bias of its own.
+
+It is much slower than the spring models — contact has to be checked between the cords themselves, not at a few nodes — so the app offers it only for previews under 300 splits. [packed/findings.md](packed/findings.md) has the measurements.
 
 ### 4.7 The elastic model in one picture
 
@@ -262,27 +272,31 @@ A mesh of real springs lying on a table with no frame. It finds its own width, b
 
 ## 5. Side by side
 
-| | Framed | Elastic |
-| --- | --- | --- |
-| Technical name | harmonic (Tutte) embedding, then spacing | rest-length spring network, force-directed and annealed |
-| Springs | zero natural length | real natural lengths, plus straightness, angle, repulsion, orientation |
-| What holds it open | a pinned rectangular frame | nothing; the rest lengths and crossing angle do |
-| Width of the strip | set by the cord count | emerges from `ℓ`, `θ` and the cord count |
-| Edge loops | pinned to a straight line | emerge from the turn rest length |
-| Energy | quadratic (linear equations) | non-linear |
-| Number of answers | exactly one | one per energy minimum; the path chooses |
-| Solver | conjugate gradient, then 80 spacing steps | 200 gradient steps with an annealed scaffold, then up to 3000 damped-dynamics steps |
-| Crossing-free? | guaranteed at the node level (Tutte) | checked afterwards; folds are penalised, not forbidden |
-| Cost per step | one pass over the edges | one pass over edges plus scaffold pairs within radius 8 |
-| Time for one block of Eyes (190 events, Node, measured 2026-09-19) | ≈ 0.06 s | ≈ 0.4 s, streamed to the view as it settles |
-| Role in the app | comparison baseline | default |
+The packed model's column is the short version of §4.5; [packed/README.md](packed/README.md) §9 has the full comparison.
 
-## 6. What neither model is
+| | Framed | Elastic | Packed |
+| --- | --- | --- | --- |
+| Technical name | harmonic (Tutte) embedding, then spacing | rest-length spring network, force-directed and annealed | taut inextensible tubes with contact, under a working pull |
+| What the cords are | springs of zero natural length | springs at a natural length, plus straightness, angle, repulsion, orientation | tubes one diameter thick that cannot overlap, pulled tight |
+| What holds it open | a pinned rectangular frame | nothing; the rest lengths and crossing angle do | nothing but contact between the cords |
+| Length between splits | whatever the frame leaves | assumed, `d / sin 2θ` | computed; comes out at `d / sin φ` |
+| Width of the strip | set by the cord count | emerges from `ℓ`, `θ` and the cord count | emerges from contact alone |
+| Edge loops | pinned to a straight line | emerge from the turn rest length | emerge from tension and the bend limit |
+| Crossing angle | from the frame | a spring at every junction | one global pull, `f / T = cos 2θ / cos³ θ` |
+| Energy | quadratic (linear equations) | non-linear | non-linear, with one-sided contact terms |
+| Number of answers | exactly one | one per energy minimum; the path chooses | one per pull; with no pull the strip is floppy |
+| Solver | conjugate gradient, then 80 spacing steps | 200 gradient steps with an annealed scaffold, then up to 3000 damped-dynamics steps | damped dynamics from the elastic layout, to a step cap or a time budget |
+| Crossing-free? | guaranteed at the node level (Tutte) | checked afterwards; folds are penalised, not forbidden | contact forbids it; still checked afterwards |
+| Cost per step | one pass over the edges | one pass over edges plus scaffold pairs within radius 8 | one pass over contact pairs between cord pieces |
+| Time for one block of Eyes (190 events, Node, measured 2026-09-19; packed 2026-09-23) | ≈ 0.06 s | ≈ 0.4 s, streamed to the view as it settles | ≈ 8 s, streamed; offered below 300 splits |
+| Role in the app | comparison baseline | default | experimental, short previews only |
 
-- **Not a material simulation.** There is no twist, no friction, no cord stiffness in bending beyond the straightness spring, and no tension from the maker's hands. The pitch `ℓ`, the angle `θ` and the turn length are packing idealisations, not measurements.
-- **Flat.** Both models live in two dimensions. Real fabric can spend strain in the third dimension; the wide junctions in the Eyes transition rows are probably where the real braid puckers. A 3D extension is sketched in [elastic/README.md §8](elastic/README.md) but not built.
-- **Colour-blind.** Colours, faces and row numbers never enter either energy. The motif has to come from the structure. That is deliberate: a removal experiment showed that dropping three rows of Eyes changes 35 later pairings without changing a single visible colour, so colour alone cannot be the model ([framed/README.md](framed/README.md)).
-- **Not validated against a photograph yet.** The elastic model produces the Eyes motif qualitatively. Whether its proportions match the real braid is a measurement still to be made.
+## 6. What none of them is
+
+- **Not a material simulation.** There is no twist and no friction in any of them. The framed and elastic models also have no tension from the maker's hands and no bending stiffness beyond the straightness spring, and their pitch `ℓ`, angle `θ` and turn length are packing idealisations rather than measurements. The packed model removes those idealisations and adds the maker's pull, but it still has no friction — which is exactly why it needs that pull to choose an angle at all (§4.5).
+- **Flat.** All three models live in two dimensions. Real fabric can spend strain in the third dimension; the wide junctions in the Eyes transition rows are probably where the real braid puckers. A 3D extension is sketched in [elastic/README.md §8](elastic/README.md) but not built.
+- **Colour-blind.** Colours, faces and row numbers never enter any of these energies. The motif has to come from the structure. That is deliberate: a removal experiment showed that dropping three rows of Eyes changes 35 later pairings without changing a single visible colour, so colour alone cannot be the model ([framed/README.md](framed/README.md)).
+- **Not validated against a photograph yet.** The elastic model produces the Eyes motif qualitatively, and the packed model turns several of these questions into numbers — a pitch, a strip width, a cord take-up, a digon lens, and how far the braid relaxes when the pull comes off. Whether any of them match the real braid is a measurement still to be made.
 
 ## 7. Symbols
 

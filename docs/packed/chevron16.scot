@@ -1,0 +1,10 @@
+# Sixteen-cord SCOT chevron. Used by the packed model's width test (findings.md §2):
+# the same structure as src/examples/chevron.ts with more interior cords, so the
+# selvedge fraction falls while everything else stays the same.
+color: CBAAAAAAAAAAAABC
+palette: A=#d3a448, B=#77b6c9, C=#d76b52
+
+1 1>2,3,4,5,6,7,8
+2 16>15,14,13,12,11,10,9,8
+
+[repeat 1-2]

@@ -1,4 +1,4 @@
-import { AnnealFigure, AverageFigure, EventGraphFigure, FramedSolveFigure, RhombusFigure, SpringEnergyFigure, ElasticSolveFigure, ValleyFigure, termIcons } from './ModelsExplainerFigures';
+import { AnnealFigure, AverageFigure, EventGraphFigure, FramedSolveFigure, PackedSolveFigure, RhombusFigure, SpringEnergyFigure, ElasticSolveFigure, ValleyFigure, termIcons } from './ModelsExplainerFigures';
 import './modelsExplainer.css';
 
 const contents = [
@@ -6,8 +6,9 @@ const contents = [
   ['why-springs', 'Why springs'],
   ['framed', 'The framed model'],
   ['elastic', 'The elastic model'],
+  ['packed', 'The packed model'],
   ['side-by-side', 'Side by side'],
-  ['limits', 'What neither model is'],
+  ['limits', 'What none of them is'],
   ['symbols', 'Symbols'],
 ] as const;
 
@@ -26,20 +27,20 @@ export default function ModelsExplainer() {
       <a className="mx-back" href="#/" aria-label="Back to SCOT Braid Studio">←</a>
       <div className="mx-title">
         <p className="mx-kicker">SCOT Braid Studio · the physics behind the Cord network view</p>
-        <h1>How the framed and elastic models work</h1>
+        <h1>How the framed, elastic and packed models work</h1>
       </div>
-      <p className="mx-header-note">For anyone with first-year maths and physics. Every figure marked <em>interactive</em> is live, and the two chevron figures run the app's real solvers.</p>
+      <p className="mx-header-note">For anyone with first-year maths and physics. Every figure marked <em>interactive</em> is live, and the three chevron figures run the app's real solvers.</p>
     </header>
 
     <div className="mx-sheet">
       <nav className="mx-toc" aria-label="Contents">
         <p className="mx-kicker">Contents</p>
         <ol>{contents.map(([id, label], i) => <li key={id}><a href={`#/models#${id}`} onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}><span>{String(i + 1).padStart(2, '0')}</span>{label}</a></li>)}</ol>
-        <p className="mx-toc-note">Deeper reading lives in the repository: <code>docs/cord-network-models-explained.md</code>, <code>docs/framed</code> and <code>docs/elastic</code>.</p>
+        <p className="mx-toc-note">Deeper reading lives in the repository: <code>docs/cord-network-models-explained.md</code>, <code>docs/framed</code>, <code>docs/elastic</code> and <code>docs/packed</code>.</p>
       </nav>
 
       <article className="mx-article">
-        <p className="mx-lede">A SCOT pattern says <em>what happens</em>, in order, and nothing about <em>where</em>. The Cord network view has to compute the shape of the finished braid from that list alone. Both of its models do it the same way: turn the splits into a network, write down an energy that is low for good drawings, and find the drawing with the least energy. They differ in which energy, and in how they go looking for the minimum.</p>
+        <p className="mx-lede">A SCOT pattern says <em>what happens</em>, in order, and nothing about <em>where</em>. The Cord network view has to compute the shape of the finished braid from that list alone. All three of its models do it the same way: turn the splits into a network, write down an energy that is low for good drawings, and find the drawing with the least energy. They differ in which energy, and in how they go looking for the minimum.</p>
 
         <section id="problem" className="mx-section">
           <header className="mx-section-head"><span className="mx-numeral">01</span><h2>The problem: a pattern is a list of events, not a picture</h2></header>
@@ -130,41 +131,65 @@ export default function ModelsExplainer() {
           <aside className="mx-pull"><p className="mx-kicker">In one picture</p><p>A mesh of real springs lying on a table with no frame. It finds its own width, bulges into loops where cords turn at the edges, and settles into a diamond lattice wherever the pattern lets it. Shake it a little at the end so it does not get stuck part-way down.</p></aside>
         </section>
 
+        <section id="packed" className="mx-section">
+          <header className="mx-section-head"><span className="mx-numeral">05</span><h2>The packed model</h2></header>
+          <p className="mx-rule">Take away every rest length. A cord is a tube that cannot be squashed and cannot pass through its neighbours, pulled tight along its length.</p>
+          <p>The elastic model still has to be <em>told</em> a lot: how long a segment should be, how long a selvedge loop should be, what angle a crossing prefers. Those are the numbers a photograph would have to confirm. The packed model asks what happens if none of them is given, and the cords are only what they physically are.</p>
+          <p>It keeps exactly three properties of a real cord:</p>
+          <ul>
+            <li><strong>A width that cannot be compressed.</strong> Each cord is a tube one diameter across, and two tubes may not overlap — except at a split, where the splitter really does pass through the splittee. That exception is graded: near a shared junction the two cords may come as close as two straight tubes crossing at <code>φ_min = 30°</code>, the most glancing split a gripfid can make. Incompressibility also means a cord cannot bend tighter than a radius of half a diameter.</li>
+            <li><strong>A pull along its length.</strong> A cord under tension stores energy in proportion to its length, so it is as short and as straight as it can be: straight between contacts, hugging whatever deflects it. This one term replaces the elastic model's cord springs, straightness springs, terminal springs and turn length.</li>
+            <li><strong>Nothing else.</strong></li>
+          </ul>
+          <p>"Press the fabric as compact as possible" needs no term of its own, because in a threaded network it is the same thing as pulling every cord tight. Tension on one cord pulls its splits toward each other, which presses the cords passing through it side by side, and every cord in the fabric is both a splitter and a splittee. That is what a maker does by hand: pulling each split tight <em>is</em> the compaction.</p>
+          <p>So the pitch is no longer assumed. Press incompressible cords together at a crossing angle <code>φ</code> and the distance between consecutive splits comes out as</p>
+          <pre className="mx-math">ℓ = d / sin φ          a result, not a parameter</pre>
+          <p>which is the elastic model's assumed pitch. On the chevron the solved segments land within 0.2 % of it at every width tested, so the packing argument is not an idealisation that had to be fitted — it is what a sheet of taut, incompressible cords does. The selvedge loop likewise shapes itself, with no turn length to choose.</p>
+          <h3>The one thing that cannot emerge</h3>
+          <p>There is a catch, and it is the most interesting result of the model. In a packed lattice every length depends on the crossing angle the same way: the segment <code>d / sin φ</code> and the cell area are both smallest at <code>φ = 90°</code>. So pressing the fabric compact and pulling every cord tight <em>both</em> drive it toward a square lattice, and in between there is a whole family of packed configurations, one per angle, with every cord straight and touching in all of them. The lattice is a scissor mechanism.</p>
+          <p>With no other term the strip does not settle at 90°; it is floppy, and it wanders and jams as contacts switch. Something has to choose. In a real braid it is friction, and the fact that the angle is set as each row is made and locked when the split is pulled tight. A static model has to supply it another way, and the honest one is the tension the maker keeps on the work: the braid hangs from an anchor and is pulled while it is made. Add that as a force <code>f</code> on each cord's two ends and the lattice picks its angle. For an infinite sheet the balance is</p>
+          <pre className="mx-math">f / T = cos 2θ / cos³ θ          ≈ 0.56 for a 73° crossing</pre>
+          <p>and that single number is the packed model's only dial: the Length / width slider sets it. A real strip, though, is stiffer than a sheet, because a selvedge turn's length depends on the angle about three and a half times more strongly than an interior segment's, and every turn is a length the tension wants to shorten by opening the angle out. So the same pull gives about 82° on eight cords, 76° on sixteen and 75° on twenty-four, approaching the sheet's 73° as the selvedges become a smaller fraction of the fabric. That is a prediction with a plain meaning: a narrow braid needs a harder pull than a wide one to reach the same angle, which is what a narrow braid does in the hand.</p>
+          <PackedSolveFigure />
+          <h3>What it costs</h3>
+          <p>The walls have to be checked between the cords themselves, not just at a few nodes, so each segment carries samples about a third of a diameter apart and the solver tests every pair of neighbouring pieces each step. That is far more work than a spring network: one block of Eyes takes seconds rather than a fraction of one, and long previews stop at a time budget before the shape has settled. The model is offered for short previews for that reason, and is still research code.</p>
+          <aside className="mx-pull"><p className="mx-kicker">In one picture</p><p>A handful of wet spaghetti threaded through itself and pulled tight at both ends. Nothing tells the strands how far apart to sit; they are simply too fat to overlap and too taut to wander, and the fabric that results is whatever those two facts allow.</p></aside>
+        </section>
+
         <section id="side-by-side" className="mx-section">
-          <header className="mx-section-head"><span className="mx-numeral">05</span><h2>Side by side</h2></header>
+          <header className="mx-section-head"><span className="mx-numeral">06</span><h2>Side by side</h2></header>
           <table className="mx-table">
-            <thead><tr><th /><th>Framed</th><th>Elastic</th></tr></thead>
+            <thead><tr><th /><th>Framed</th><th>Elastic</th><th>Packed</th></tr></thead>
             <tbody>
               {[
-                ['Technical name', 'harmonic (Tutte) embedding, then spacing', 'rest-length spring network, force-directed and annealed'],
-                ['Springs', 'zero natural length', 'real natural lengths, plus straightness, angle, repulsion, orientation'],
-                ['What holds it open', 'a pinned rectangular frame', 'nothing; the rest lengths and crossing angle do'],
-                ['Width of the strip', 'set by the cord count', 'emerges from ℓ, θ and the cord count'],
-                ['Edge loops', 'pinned to a straight line', 'emerge from the turn rest length'],
-                ['Energy', 'quadratic, so linear equations', 'non-linear'],
-                ['Number of answers', 'exactly one', 'one per energy minimum; the path chooses'],
-                ['Solver', 'conjugate gradient, then 80 spacing steps', '200 gradient steps with an annealed scaffold, then up to 3000 damped-dynamics steps'],
-                ['Crossing-free?', 'guaranteed at the node level (Tutte)', 'checked afterwards; folds are penalised, not forbidden'],
-                ['Cost per step', 'one pass over the edges', 'edges plus scaffold pairs within graph distance 8'],
-                ['One block of Eyes, 190 events', '≈ 0.06 s', '≈ 0.4 s, streamed to the view as it settles'],
-                ['Role in the app', 'comparison baseline', 'default'],
-              ].map(r => <tr key={r[0]}><th scope="row">{r[0]}</th><td>{r[1]}</td><td>{r[2]}</td></tr>)}
+                ['Technical name', 'harmonic (Tutte) embedding, then spacing', 'rest-length spring network, force-directed and annealed', 'taut inextensible tubes with contact, under a working pull'],
+                ['What the cords are', 'springs of zero natural length', 'springs at a natural length, plus straightness, angle, repulsion, orientation', 'tubes one diameter thick that cannot overlap, pulled tight'],
+                ['What holds it open', 'a pinned rectangular frame', 'the rest lengths and the crossing angle', 'nothing but contact; the cords are too fat to overlap'],
+                ['Length between splits', 'whatever the frame leaves', 'assumed, d / sin 2θ', 'computed; comes out at d / sin φ'],
+                ['Width of the strip', 'set by the cord count', 'emerges from ℓ, θ and the cord count', 'emerges from contact alone'],
+                ['Edge loops', 'pinned to a straight line', 'emerge from the turn rest length', 'emerge from tension and the bend limit'],
+                ['Crossing angle', 'from the frame', 'a spring at every junction', 'one global pull, f / T = cos 2θ / cos³ θ'],
+                ['Number of answers', 'exactly one', 'one per energy minimum; the path chooses', 'one per pull; with no pull the strip is floppy'],
+                ['Crossing-free?', 'guaranteed at the node level (Tutte)', 'checked afterwards; folds are penalised, not forbidden', 'contact forbids it; still checked afterwards'],
+                ['One block of Eyes, 190 events', '≈ 0.06 s', '≈ 0.4 s, streamed to the view as it settles', 'seconds, streamed; long previews stop at a budget'],
+                ['Role in the app', 'comparison baseline', 'default', 'experimental, short previews only'],
+              ].map(r => <tr key={r[0]}><th scope="row">{r[0]}</th><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>)}
             </tbody>
           </table>
         </section>
 
         <section id="limits" className="mx-section">
-          <header className="mx-section-head"><span className="mx-numeral">06</span><h2>What neither model is</h2></header>
+          <header className="mx-section-head"><span className="mx-numeral">07</span><h2>What none of them is</h2></header>
           <ul>
-            <li><strong>Not a material simulation.</strong> No twist, no friction, no bending stiffness beyond the straightness spring, no tension from the maker's hands. The pitch, the angle and the turn length are packing idealisations, not measurements.</li>
-            <li><strong>Flat.</strong> Both models live in two dimensions. Real fabric can spend strain in the third; the wide junctions in the Eyes transition rows are probably where the real braid puckers. A 3D extension is sketched in the elastic model's notes but not built.</li>
-            <li><strong>Colour-blind.</strong> Colours, faces and row numbers never enter either energy, so the motif has to come from the structure. That is deliberate: dropping three rows of Eyes changes 35 later pairings without changing a single visible colour, so colour alone cannot be the model.</li>
-            <li><strong>Not yet validated against a photograph.</strong> The elastic model produces the Eyes motif qualitatively. Whether its proportions match the real braid is a measurement still to be made.</li>
+            <li><strong>Not a material simulation.</strong> No twist and no friction in any of them. The framed and elastic models have no tension from the maker's hands either, and their pitch, angle and turn length are packing idealisations rather than measurements. The packed model removes those idealisations and adds the maker's pull, but it still has no friction, which is precisely why it needs that pull to choose an angle at all.</li>
+            <li><strong>Flat.</strong> All three live in two dimensions. Real fabric can spend strain in the third; the wide junctions in the Eyes transition rows are probably where the real braid puckers. A 3D extension is sketched in the elastic model's notes but not built.</li>
+            <li><strong>Colour-blind.</strong> Colours, faces and row numbers never enter any of these energies, so the motif has to come from the structure. That is deliberate: dropping three rows of Eyes changes 35 later pairings without changing a single visible colour, so colour alone cannot be the model.</li>
+            <li><strong>Not yet validated against a photograph.</strong> The elastic model produces the Eyes motif qualitatively, and the packed model predicts a pitch, a width, a take-up and how far the braid relaxes when the pull is released. Whether any of those match the real braid is a measurement still to be made.</li>
           </ul>
         </section>
 
         <section id="symbols" className="mx-section">
-          <header className="mx-section-head"><span className="mx-numeral">07</span><h2>Symbols</h2></header>
+          <header className="mx-section-head"><span className="mx-numeral">08</span><h2>Symbols</h2></header>
           <table className="mx-table">
             <thead><tr><th>Symbol</th><th>Meaning</th><th>Default</th></tr></thead>
             <tbody>
@@ -180,10 +205,17 @@ export default function ModelsExplainer() {
                 ['η', 'gradient-descent step size', '0.1'],
                 ['γ', 'drag coefficient in the settling dynamics', '0.1'],
                 ['T', 'unfolding steps', '200'],
-              ].map(r => <tr key={r[0]}><td><code>{r[0]}</code></td><td>{r[1]}</td><td>{r[2]}</td></tr>)}
+                ['—', 'the packed model adds', ''],
+                ['T', 'tension along every cord, the unit of force', '1'],
+                ['f', "working pull on each cord's ends, cos 2θ / cos³ θ", '≈ 0.56 T'],
+                ['φ', 'realised crossing angle; the pitch comes out at d / sin φ', 'measured, not set'],
+                ['φ_min', 'most glancing split allowed, setting how close two cords may come at a junction', '30°'],
+                ['R_min', 'smallest bend radius a cord can take, from incompressibility', 'd / 2'],
+                ['h', 'spacing of the samples that carry the contact test', 'd / 3'],
+              ].map((r, i) => <tr key={`${r[0]}-${i}`}><td><code>{r[0]}</code></td><td>{r[1]}</td><td>{r[2]}</td></tr>)}
             </tbody>
           </table>
-          <p className="mx-colophon">Numbers on this page are taken from <code>src/domain/framedNetwork.ts</code> and <code>src/domain/elasticNetwork.ts</code>; the experimental results are from <code>docs/elastic/findings.md</code>. Method reference: Svetlin Tassev, CrochetPARADE (GPLv3); this app describes its method and copies no code.</p>
+          <p className="mx-colophon">Numbers on this page are taken from <code>src/domain/framedNetwork.ts</code>, <code>src/domain/elasticNetwork.ts</code> and <code>src/domain/packedNetwork.ts</code>; the experimental results are from <code>docs/elastic/findings.md</code> and <code>docs/packed/findings.md</code>. Method reference: Svetlin Tassev, CrochetPARADE (GPLv3); this app describes its method and copies no code. The packed model's tightening approach follows the knot-tightening literature (Pierański's SONO; Ashton, Cantarella, Piatek and Rawdon), applied to a threaded sheet.</p>
         </section>
       </article>
     </div>

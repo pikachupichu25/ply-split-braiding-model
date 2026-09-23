@@ -1,0 +1,1326 @@
+{
+  "description": "Packed-model layout experiment (docs/packed/README.md §7, tests 1–4). Seeded from the elastic layout; tension, walls, bend limit and working pull only. Not a photo-validated result.",
+  "sample": "chevron24",
+  "blocks": 8,
+  "seedElasticMs": 298,
+  "profile": {
+    "theta": 0.6375487981386926,
+    "T": 1,
+    "pull": 0.5616,
+    "h": 0.3333333333333333,
+    "rmin": 0.5,
+    "phiMin": 0.5235987755982988,
+    "selfExempt": 1.6,
+    "kw": 50,
+    "kb": 5,
+    "ramp": 200,
+    "wCross": 0,
+    "wOrient": 1,
+    "orientMin": 0.05,
+    "dt": 0.1,
+    "gamma": 3,
+    "steps": 6000,
+    "tolerance": 0.5,
+    "settle": 300,
+    "settleAngle": 0.1,
+    "settleWidth": 0.002,
+    "cap": 0.1,
+    "redistribute": 1,
+    "tail": 1.5,
+    "log": 100,
+    "blocks": 8,
+    "thetaDeg": 36.53,
+    "phiMinDeg": 30
+  },
+  "graph": {
+    "cords": 24,
+    "events": 184,
+    "nodes": 962,
+    "samples": 730,
+    "segments": 344,
+    "selvedgeTurns": 14,
+    "interiorReversals": 0,
+    "links": 1074,
+    "triples": 730,
+    "unusedCords": []
+  },
+  "runs": [
+    {
+      "run": "default",
+      "profile": {
+        "pull": 0.5616,
+        "rmin": 0.5,
+        "thetaDeg": 36.53
+      },
+      "seed": {
+        "crossingAngle": {
+          "count": 126,
+          "mean": 73.303,
+          "std": 1.412,
+          "min": 70.089,
+          "max": 75.61
+        },
+        "segments": {
+          "count": 330,
+          "mean": 1.045,
+          "std": 0.011,
+          "min": 1.031,
+          "max": 1.087
+        },
+        "envelope": {
+          "width": 19.001,
+          "widthPerCord": 0.7917,
+          "length": 20.788,
+          "junctionWidth": 17.4,
+          "junctionLength": 19.788
+        },
+        "walls": {
+          "activePairs": 3376,
+          "byTier": {
+            "full": {
+              "pairs": 2716,
+              "maxOverlap": 0.1
+            },
+            "junction": {
+              "pairs": 660,
+              "maxOverlap": 0.0111
+            }
+          }
+        }
+      },
+      "ms": 52715,
+      "steps": 6000,
+      "converged": false,
+      "maxGradient": 3.4009,
+      "energy": {
+        "tension": 366.8135,
+        "wall": 0.5034,
+        "bend": 0,
+        "pull": -164.7224,
+        "orient": 0,
+        "cross": 0,
+        "total": 202.5945
+      },
+      "expected": {
+        "crossingAngleDeg": 73.06,
+        "pitch": 1.0454,
+        "widthPerCord": 0.6222
+      },
+      "crossingAngle": {
+        "all": {
+          "count": 184,
+          "mean": 75.182,
+          "std": 3.852,
+          "min": 67.119,
+          "max": 89.13
+        },
+        "interior": {
+          "count": 126,
+          "mean": 74.741,
+          "std": 2.851,
+          "min": 68.437,
+          "max": 84.911
+        },
+        "outer": {
+          "count": 16,
+          "mean": 75.725,
+          "std": 6.448,
+          "min": 67.119,
+          "max": 88.839
+        },
+        "percentiles": {
+          "p10": 71.5,
+          "p25": 72.9,
+          "p50": 75.1,
+          "p75": 76.3,
+          "p90": 79.1
+        },
+        "wide": []
+      },
+      "segments": {
+        "regular": {
+          "count": 330,
+          "mean": 1.036,
+          "std": 0.014,
+          "min": 0.989,
+          "max": 1.072
+        },
+        "interiorReversal": null,
+        "turns": {
+          "count": 14,
+          "mean": 1.784,
+          "std": 0.183,
+          "min": 1.4,
+          "max": 1.919,
+          "bulge": {
+            "count": 14,
+            "mean": 0.392,
+            "std": 0.049,
+            "min": 0.291,
+            "max": 0.433
+          },
+          "chord": {
+            "count": 14,
+            "mean": 1.577,
+            "std": 0.148,
+            "min": 1.274,
+            "max": 1.703
+          }
+        },
+        "turnDetail": [
+          {
+            "events": [
+              0,
+              23
+            ],
+            "length": 1.4,
+            "chord": 1.274,
+            "bulge": 0.291
+          },
+          {
+            "events": [
+              23,
+              46
+            ],
+            "length": 1.627,
+            "chord": 1.443,
+            "bulge": 0.35
+          },
+          {
+            "events": [
+              46,
+              69
+            ],
+            "length": 1.84,
+            "chord": 1.61,
+            "bulge": 0.419
+          },
+          {
+            "events": [
+              69,
+              92
+            ],
+            "length": 1.883,
+            "chord": 1.658,
+            "bulge": 0.42
+          },
+          {
+            "events": [
+              92,
+              115
+            ],
+            "length": 1.908,
+            "chord": 1.673,
+            "bulge": 0.432
+          },
+          {
+            "events": [
+              115,
+              138
+            ],
+            "length": 1.912,
+            "chord": 1.681,
+            "bulge": 0.429
+          }
+        ]
+      },
+      "envelope": {
+        "width": 15.475,
+        "widthPerCord": 0.6448,
+        "length": 21.083,
+        "junctionWidth": 13.881,
+        "junctionLength": 20.083
+      },
+      "walls": {
+        "activePairs": 2999,
+        "byTier": {
+          "full": {
+            "pairs": 2210,
+            "maxOverlap": 0.0134
+          },
+          "junction": {
+            "pairs": 789,
+            "maxOverlap": 0.0203
+          }
+        },
+        "closest": [
+          {
+            "a": "e34-C22:s846",
+            "b": "C23:s885-C23:s886",
+            "c": 0.9338139861795453,
+            "r": 0.914
+          },
+          {
+            "a": "C02:s224-C02:s225",
+            "b": "e23-C03:s267",
+            "c": 0.9335867920472061,
+            "r": 0.913
+          },
+          {
+            "a": "C17:s653-C17:s654",
+            "b": "C18:s694-e149",
+            "c": 0.9578769054867169,
+            "r": 0.942
+          },
+          {
+            "a": "C07:s443-e138",
+            "b": "C08:s484-C08:s485",
+            "c": 0.9581794723120929,
+            "r": 0.942
+          },
+          {
+            "a": "C03:s271-e46",
+            "b": "C04:s312-C04:s313",
+            "c": 0.9199099536213131,
+            "r": 0.906
+          },
+          {
+            "a": "e11-C23:s885",
+            "b": "e12-C24:s928",
+            "c": 1,
+            "r": 0.987
+          }
+        ]
+      },
+      "bend": {
+        "psiMaxDeg": 38.9,
+        "maxTurnDeg": 32.8,
+        "overLimit": 0
+      },
+      "takeUp": {
+        "meanPerCordPerBlock": 1.911,
+        "cords": [
+          {
+            "cord": "C01",
+            "junctions": 19,
+            "lengthPerBlock": 2.31
+          },
+          {
+            "cord": "C02",
+            "junctions": 19,
+            "lengthPerBlock": 2.362
+          },
+          {
+            "cord": "C03",
+            "junctions": 19,
+            "lengthPerBlock": 2.401
+          },
+          {
+            "cord": "C04",
+            "junctions": 19,
+            "lengthPerBlock": 2.427
+          },
+          {
+            "cord": "C05",
+            "junctions": 19,
+            "lengthPerBlock": 2.434
+          },
+          {
+            "cord": "C06",
+            "junctions": 19,
+            "lengthPerBlock": 2.441
+          },
+          {
+            "cord": "C07",
+            "junctions": 19,
+            "lengthPerBlock": 2.445
+          },
+          {
+            "cord": "C08",
+            "junctions": 19,
+            "lengthPerBlock": 2.442
+          },
+          {
+            "cord": "C09",
+            "junctions": 8,
+            "lengthPerBlock": 0.914
+          },
+          {
+            "cord": "C10",
+            "junctions": 8,
+            "lengthPerBlock": 0.922
+          },
+          {
+            "cord": "C11",
+            "junctions": 8,
+            "lengthPerBlock": 0.92
+          },
+          {
+            "cord": "C12",
+            "junctions": 8,
+            "lengthPerBlock": 0.908
+          },
+          {
+            "cord": "C13",
+            "junctions": 8,
+            "lengthPerBlock": 0.907
+          },
+          {
+            "cord": "C14",
+            "junctions": 8,
+            "lengthPerBlock": 0.921
+          },
+          {
+            "cord": "C15",
+            "junctions": 8,
+            "lengthPerBlock": 0.922
+          },
+          {
+            "cord": "C16",
+            "junctions": 8,
+            "lengthPerBlock": 0.914
+          },
+          {
+            "cord": "C17",
+            "junctions": 19,
+            "lengthPerBlock": 2.443
+          },
+          {
+            "cord": "C18",
+            "junctions": 19,
+            "lengthPerBlock": 2.446
+          },
+          {
+            "cord": "C19",
+            "junctions": 19,
+            "lengthPerBlock": 2.441
+          },
+          {
+            "cord": "C20",
+            "junctions": 19,
+            "lengthPerBlock": 2.434
+          },
+          {
+            "cord": "C21",
+            "junctions": 19,
+            "lengthPerBlock": 2.427
+          },
+          {
+            "cord": "C22",
+            "junctions": 19,
+            "lengthPerBlock": 2.401
+          },
+          {
+            "cord": "C23",
+            "junctions": 19,
+            "lengthPerBlock": 2.362
+          },
+          {
+            "cord": "C24",
+            "junctions": 19,
+            "lengthPerBlock": 2.31
+          }
+        ]
+      },
+      "orientation": {
+        "positive": 184,
+        "negative": 0,
+        "violated": []
+      },
+      "crossings": 0,
+      "unresolved": false,
+      "log": [
+        {
+          "step": 0,
+          "maxGrad": 6.1864,
+          "angle": 72.43,
+          "width": 19.001,
+          "energy": {
+            "tension": 373.0865,
+            "wall": 17.7196,
+            "bend": 0.9503,
+            "pull": -164.2271,
+            "orient": 0,
+            "cross": 0,
+            "total": 227.5293
+          }
+        },
+        {
+          "step": 100,
+          "maxGrad": 0.759,
+          "angle": 75.45,
+          "width": 18.156,
+          "energy": {
+            "tension": 365.3444,
+            "wall": 0.4737,
+            "bend": 0,
+            "pull": -162.4922,
+            "orient": 0,
+            "cross": 0,
+            "total": 203.3259
+          }
+        },
+        {
+          "step": 200,
+          "maxGrad": 1.8545,
+          "angle": 76.08,
+          "width": 17.999,
+          "energy": {
+            "tension": 364.7097,
+            "wall": 0.4239,
+            "bend": 0,
+            "pull": -161.6281,
+            "orient": 0,
+            "cross": 0,
+            "total": 203.5054
+          }
+        },
+        {
+          "step": 300,
+          "maxGrad": 1.7925,
+          "angle": 76.36,
+          "width": 17.835,
+          "energy": {
+            "tension": 364.0003,
+            "wall": 0.4412,
+            "bend": 0,
+            "pull": -161.0913,
+            "orient": 0,
+            "cross": 0,
+            "total": 203.3502
+          }
+        },
+        {
+          "step": 400,
+          "maxGrad": 1.8457,
+          "angle": 76.54,
+          "width": 17.68,
+          "energy": {
+            "tension": 363.5624,
+            "wall": 0.4345,
+            "bend": 0,
+            "pull": -160.8089,
+            "orient": 0,
+            "cross": 0,
+            "total": 203.1879
+          }
+        },
+        {
+          "step": 500,
+          "maxGrad": 2.5939,
+          "angle": 76.63,
+          "width": 17.544,
+          "energy": {
+            "tension": 363.3392,
+            "wall": 0.4544,
+            "bend": 0,
+            "pull": -160.7005,
+            "orient": 0,
+            "cross": 0,
+            "total": 203.0932
+          }
+        },
+        {
+          "step": 600,
+          "maxGrad": 2.7231,
+          "angle": 76.66,
+          "width": 17.411,
+          "energy": {
+            "tension": 363.2427,
+            "wall": 0.4643,
+            "bend": 0,
+            "pull": -160.6965,
+            "orient": 0,
+            "cross": 0,
+            "total": 203.0105
+          }
+        },
+        {
+          "step": 700,
+          "maxGrad": 3.0607,
+          "angle": 76.68,
+          "width": 17.285,
+          "energy": {
+            "tension": 363.2116,
+            "wall": 0.4583,
+            "bend": 0,
+            "pull": -160.7622,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.9078
+          }
+        },
+        {
+          "step": 800,
+          "maxGrad": 3.0309,
+          "angle": 76.62,
+          "width": 17.162,
+          "energy": {
+            "tension": 363.2609,
+            "wall": 0.4641,
+            "bend": 0,
+            "pull": -160.8839,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.841
+          }
+        },
+        {
+          "step": 900,
+          "maxGrad": 2.364,
+          "angle": 76.57,
+          "width": 17.046,
+          "energy": {
+            "tension": 363.3419,
+            "wall": 0.4415,
+            "bend": 0,
+            "pull": -161.0334,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.7499
+          }
+        },
+        {
+          "step": 1000,
+          "maxGrad": 1.9813,
+          "angle": 76.53,
+          "width": 16.933,
+          "energy": {
+            "tension": 363.4484,
+            "wall": 0.4457,
+            "bend": 0,
+            "pull": -161.2009,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.6932
+          }
+        },
+        {
+          "step": 1100,
+          "maxGrad": 2.7455,
+          "angle": 76.49,
+          "width": 16.821,
+          "energy": {
+            "tension": 363.5918,
+            "wall": 0.4471,
+            "bend": 0,
+            "pull": -161.3803,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.6586
+          }
+        },
+        {
+          "step": 1200,
+          "maxGrad": 1.6529,
+          "angle": 76.38,
+          "width": 16.722,
+          "energy": {
+            "tension": 363.7261,
+            "wall": 0.4415,
+            "bend": 0,
+            "pull": -161.5651,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.6025
+          }
+        },
+        {
+          "step": 1300,
+          "maxGrad": 1.6312,
+          "angle": 76.35,
+          "width": 16.633,
+          "energy": {
+            "tension": 363.8768,
+            "wall": 0.4417,
+            "bend": 0,
+            "pull": -161.7408,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5776
+          }
+        },
+        {
+          "step": 1400,
+          "maxGrad": 2.2474,
+          "angle": 76.29,
+          "width": 16.547,
+          "energy": {
+            "tension": 364.0168,
+            "wall": 0.4491,
+            "bend": 0,
+            "pull": -161.9105,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5554
+          }
+        },
+        {
+          "step": 1500,
+          "maxGrad": 1.4712,
+          "angle": 76.21,
+          "width": 16.466,
+          "energy": {
+            "tension": 364.1744,
+            "wall": 0.4407,
+            "bend": 0,
+            "pull": -162.0809,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5342
+          }
+        },
+        {
+          "step": 1600,
+          "maxGrad": 1.6444,
+          "angle": 76.17,
+          "width": 16.388,
+          "energy": {
+            "tension": 364.3045,
+            "wall": 0.4474,
+            "bend": 0,
+            "pull": -162.2299,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5219
+          }
+        },
+        {
+          "step": 1700,
+          "maxGrad": 2.6719,
+          "angle": 76.07,
+          "width": 16.314,
+          "energy": {
+            "tension": 364.4322,
+            "wall": 0.4663,
+            "bend": 0,
+            "pull": -162.3816,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5168
+          }
+        },
+        {
+          "step": 1800,
+          "maxGrad": 1.7458,
+          "angle": 76.03,
+          "width": 16.247,
+          "energy": {
+            "tension": 364.5721,
+            "wall": 0.4423,
+            "bend": 0,
+            "pull": -162.5255,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.4889
+          }
+        },
+        {
+          "step": 1900,
+          "maxGrad": 2.1686,
+          "angle": 76,
+          "width": 16.185,
+          "energy": {
+            "tension": 364.692,
+            "wall": 0.4624,
+            "bend": 0,
+            "pull": -162.655,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.4994
+          }
+        },
+        {
+          "step": 2000,
+          "maxGrad": 1.8652,
+          "angle": 75.95,
+          "width": 16.127,
+          "energy": {
+            "tension": 364.8091,
+            "wall": 0.4436,
+            "bend": 0,
+            "pull": -162.7747,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.478
+          }
+        },
+        {
+          "step": 2100,
+          "maxGrad": 2.044,
+          "angle": 75.92,
+          "width": 16.071,
+          "energy": {
+            "tension": 364.9389,
+            "wall": 0.4531,
+            "bend": 0,
+            "pull": -162.8966,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.4954
+          }
+        },
+        {
+          "step": 2200,
+          "maxGrad": 2.4251,
+          "angle": 75.87,
+          "width": 16.02,
+          "energy": {
+            "tension": 365.0333,
+            "wall": 0.468,
+            "bend": 0,
+            "pull": -163.0065,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.4949
+          }
+        },
+        {
+          "step": 2300,
+          "maxGrad": 1.7267,
+          "angle": 75.81,
+          "width": 15.973,
+          "energy": {
+            "tension": 365.1222,
+            "wall": 0.4697,
+            "bend": 0,
+            "pull": -163.0982,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.4937
+          }
+        },
+        {
+          "step": 2400,
+          "maxGrad": 2.1767,
+          "angle": 75.81,
+          "width": 15.929,
+          "energy": {
+            "tension": 365.2153,
+            "wall": 0.4726,
+            "bend": 0,
+            "pull": -163.1935,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.4944
+          }
+        },
+        {
+          "step": 2500,
+          "maxGrad": 1.4393,
+          "angle": 75.78,
+          "width": 15.887,
+          "energy": {
+            "tension": 365.3163,
+            "wall": 0.4589,
+            "bend": 0,
+            "pull": -163.2844,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.4908
+          }
+        },
+        {
+          "step": 2600,
+          "maxGrad": 2.5688,
+          "angle": 75.74,
+          "width": 15.847,
+          "energy": {
+            "tension": 365.3961,
+            "wall": 0.5208,
+            "bend": 0,
+            "pull": -163.3667,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5502
+          }
+        },
+        {
+          "step": 2700,
+          "maxGrad": 2.77,
+          "angle": 75.68,
+          "width": 15.809,
+          "energy": {
+            "tension": 365.4907,
+            "wall": 0.4823,
+            "bend": 0,
+            "pull": -163.4482,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5247
+          }
+        },
+        {
+          "step": 2800,
+          "maxGrad": 2.1629,
+          "angle": 75.67,
+          "width": 15.774,
+          "energy": {
+            "tension": 365.5562,
+            "wall": 0.4672,
+            "bend": 0,
+            "pull": -163.5216,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5018
+          }
+        },
+        {
+          "step": 2900,
+          "maxGrad": 1.9411,
+          "angle": 75.64,
+          "width": 15.74,
+          "energy": {
+            "tension": 365.6228,
+            "wall": 0.4813,
+            "bend": 0,
+            "pull": -163.5924,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5117
+          }
+        },
+        {
+          "step": 3000,
+          "maxGrad": 2.1481,
+          "angle": 75.62,
+          "width": 15.704,
+          "energy": {
+            "tension": 365.6943,
+            "wall": 0.4806,
+            "bend": 0,
+            "pull": -163.6634,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5115
+          }
+        },
+        {
+          "step": 3100,
+          "maxGrad": 2.9284,
+          "angle": 75.54,
+          "width": 15.673,
+          "energy": {
+            "tension": 365.7677,
+            "wall": 0.4897,
+            "bend": 0,
+            "pull": -163.7338,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5235
+          }
+        },
+        {
+          "step": 3200,
+          "maxGrad": 3.0367,
+          "angle": 75.55,
+          "width": 15.641,
+          "energy": {
+            "tension": 365.8365,
+            "wall": 0.4768,
+            "bend": 0,
+            "pull": -163.7981,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5152
+          }
+        },
+        {
+          "step": 3300,
+          "maxGrad": 2.3984,
+          "angle": 75.55,
+          "width": 15.612,
+          "energy": {
+            "tension": 365.8947,
+            "wall": 0.493,
+            "bend": 0,
+            "pull": -163.8566,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.531
+          }
+        },
+        {
+          "step": 3400,
+          "maxGrad": 2.0956,
+          "angle": 75.51,
+          "width": 15.584,
+          "energy": {
+            "tension": 365.9707,
+            "wall": 0.4624,
+            "bend": 0,
+            "pull": -163.9238,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5093
+          }
+        },
+        {
+          "step": 3500,
+          "maxGrad": 3.4055,
+          "angle": 75.45,
+          "width": 15.558,
+          "energy": {
+            "tension": 365.9972,
+            "wall": 0.5022,
+            "bend": 0,
+            "pull": -163.9684,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.531
+          }
+        },
+        {
+          "step": 3600,
+          "maxGrad": 2.6912,
+          "angle": 75.47,
+          "width": 15.532,
+          "energy": {
+            "tension": 366.0641,
+            "wall": 0.4955,
+            "bend": 0,
+            "pull": -164.0218,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5378
+          }
+        },
+        {
+          "step": 3700,
+          "maxGrad": 2.238,
+          "angle": 75.47,
+          "width": 15.509,
+          "energy": {
+            "tension": 366.116,
+            "wall": 0.484,
+            "bend": 0,
+            "pull": -164.0713,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5286
+          }
+        },
+        {
+          "step": 3800,
+          "maxGrad": 3.8729,
+          "angle": 75.45,
+          "width": 15.492,
+          "energy": {
+            "tension": 366.1737,
+            "wall": 0.4946,
+            "bend": 0,
+            "pull": -164.1229,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5454
+          }
+        },
+        {
+          "step": 3900,
+          "maxGrad": 1.9037,
+          "angle": 75.43,
+          "width": 15.483,
+          "energy": {
+            "tension": 366.2175,
+            "wall": 0.4815,
+            "bend": 0,
+            "pull": -164.1708,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5282
+          }
+        },
+        {
+          "step": 4000,
+          "maxGrad": 2.9002,
+          "angle": 75.37,
+          "width": 15.482,
+          "energy": {
+            "tension": 366.2713,
+            "wall": 0.4798,
+            "bend": 0,
+            "pull": -164.2121,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5389
+          }
+        },
+        {
+          "step": 4100,
+          "maxGrad": 2.8649,
+          "angle": 75.44,
+          "width": 15.483,
+          "energy": {
+            "tension": 366.3104,
+            "wall": 0.5193,
+            "bend": 0,
+            "pull": -164.2527,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.577
+          }
+        },
+        {
+          "step": 4200,
+          "maxGrad": 3.0094,
+          "angle": 75.38,
+          "width": 15.479,
+          "energy": {
+            "tension": 366.3493,
+            "wall": 0.493,
+            "bend": 0,
+            "pull": -164.2912,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5512
+          }
+        },
+        {
+          "step": 4300,
+          "maxGrad": 2.9863,
+          "angle": 75.36,
+          "width": 15.476,
+          "energy": {
+            "tension": 366.384,
+            "wall": 0.5092,
+            "bend": 0,
+            "pull": -164.3263,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5669
+          }
+        },
+        {
+          "step": 4400,
+          "maxGrad": 2.6725,
+          "angle": 75.35,
+          "width": 15.476,
+          "energy": {
+            "tension": 366.4189,
+            "wall": 0.4949,
+            "bend": 0,
+            "pull": -164.3639,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5499
+          }
+        },
+        {
+          "step": 4500,
+          "maxGrad": 1.9895,
+          "angle": 75.36,
+          "width": 15.476,
+          "energy": {
+            "tension": 366.4467,
+            "wall": 0.485,
+            "bend": 0,
+            "pull": -164.3896,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5421
+          }
+        },
+        {
+          "step": 4600,
+          "maxGrad": 1.9454,
+          "angle": 75.38,
+          "width": 15.471,
+          "energy": {
+            "tension": 366.4663,
+            "wall": 0.511,
+            "bend": 0,
+            "pull": -164.4183,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.559
+          }
+        },
+        {
+          "step": 4700,
+          "maxGrad": 2.3097,
+          "angle": 75.28,
+          "width": 15.471,
+          "energy": {
+            "tension": 366.4973,
+            "wall": 0.4757,
+            "bend": 0,
+            "pull": -164.4507,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5223
+          }
+        },
+        {
+          "step": 4800,
+          "maxGrad": 2.4807,
+          "angle": 75.29,
+          "width": 15.478,
+          "energy": {
+            "tension": 366.5855,
+            "wall": 0.4978,
+            "bend": 0,
+            "pull": -164.4912,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.592
+          }
+        },
+        {
+          "step": 4900,
+          "maxGrad": 2.7526,
+          "angle": 75.3,
+          "width": 15.48,
+          "energy": {
+            "tension": 366.5695,
+            "wall": 0.5096,
+            "bend": 0,
+            "pull": -164.5072,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.572
+          }
+        },
+        {
+          "step": 5000,
+          "maxGrad": 2.5017,
+          "angle": 75.27,
+          "width": 15.482,
+          "energy": {
+            "tension": 366.6229,
+            "wall": 0.4917,
+            "bend": 0,
+            "pull": -164.5392,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5754
+          }
+        },
+        {
+          "step": 5100,
+          "maxGrad": 3.2407,
+          "angle": 75.25,
+          "width": 15.47,
+          "energy": {
+            "tension": 366.6205,
+            "wall": 0.4779,
+            "bend": 0,
+            "pull": -164.5592,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5391
+          }
+        },
+        {
+          "step": 5200,
+          "maxGrad": 1.9584,
+          "angle": 75.27,
+          "width": 15.469,
+          "energy": {
+            "tension": 366.6328,
+            "wall": 0.4857,
+            "bend": 0,
+            "pull": -164.5763,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5422
+          }
+        },
+        {
+          "step": 5300,
+          "maxGrad": 2.6021,
+          "angle": 75.23,
+          "width": 15.466,
+          "energy": {
+            "tension": 366.6499,
+            "wall": 0.5115,
+            "bend": 0,
+            "pull": -164.5946,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5669
+          }
+        },
+        {
+          "step": 5400,
+          "maxGrad": 3.7574,
+          "angle": 75.27,
+          "width": 15.474,
+          "energy": {
+            "tension": 366.7017,
+            "wall": 0.5098,
+            "bend": 0,
+            "pull": -164.6209,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5906
+          }
+        },
+        {
+          "step": 5500,
+          "maxGrad": 2.0375,
+          "angle": 75.23,
+          "width": 15.473,
+          "energy": {
+            "tension": 366.7232,
+            "wall": 0.4775,
+            "bend": 0,
+            "pull": -164.646,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5547
+          }
+        },
+        {
+          "step": 5600,
+          "maxGrad": 2.7325,
+          "angle": 75.25,
+          "width": 15.466,
+          "energy": {
+            "tension": 366.7316,
+            "wall": 0.5036,
+            "bend": 0,
+            "pull": -164.6621,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5732
+          }
+        },
+        {
+          "step": 5700,
+          "maxGrad": 2.8183,
+          "angle": 75.2,
+          "width": 15.472,
+          "energy": {
+            "tension": 366.7457,
+            "wall": 0.5039,
+            "bend": 0,
+            "pull": -164.6747,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5749
+          }
+        },
+        {
+          "step": 5800,
+          "maxGrad": 2.4903,
+          "angle": 75.22,
+          "width": 15.466,
+          "energy": {
+            "tension": 366.7896,
+            "wall": 0.491,
+            "bend": 0,
+            "pull": -164.697,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5837
+          }
+        },
+        {
+          "step": 5900,
+          "maxGrad": 2.309,
+          "angle": 75.21,
+          "width": 15.48,
+          "energy": {
+            "tension": 366.7929,
+            "wall": 0.4827,
+            "bend": 0,
+            "pull": -164.6987,
+            "orient": 0,
+            "cross": 0,
+            "total": 202.5769
+          }
+        }
+      ]
+    }
+  ]
+}
