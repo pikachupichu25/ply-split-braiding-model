@@ -23,7 +23,7 @@ export function finishedV2ToExpectedLayout(
   return {
     schemaVersion: 1,
     kind: 'expected-finished-layout',
-    name: `${options.name} — Finished v2`,
+    name: `${options.name} — Cell chart`,
     columnCount: layout.columnCount,
     geometry: {
       columnWidth: options.columnWidth,

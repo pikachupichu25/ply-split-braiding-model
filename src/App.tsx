@@ -235,7 +235,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
             <div className="toolbar" aria-label="Visualization controls">
               <div className="toggle-group">
                 {/* <button className={view === 'finished-v1' ? 'is-active' : ''} onClick={() => setView('finished-v1')}>Finished v1</button> */}
-                <button className={view === 'finished-v2' ? 'is-active' : ''} onClick={() => setView('finished-v2')}>Finished v2</button>
+                <button className={view === 'finished-v2' ? 'is-active' : ''} onClick={() => setView('finished-v2')}>Cell chart</button>
                 <button className={view === 'cord-network' ? 'is-active' : ''} onClick={() => setView('cord-network')}>Cord network</button>
                 {/* <button className={view === 'finished-dev' ? 'is-active' : ''} onClick={() => setView('finished-dev')}>Finished (dev)</button> */}
                 <button className={view === 'braid' ? 'is-active' : ''} onClick={() => setView('braid')}>Braid</button>
@@ -275,7 +275,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
               : view === 'finished-v1'
               ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v1`
               : view === 'finished-v2'
-                ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · v2 · chronological R1–R4`
+                ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · chronological R1–R4`
               : view === 'finished-dev'
                 ? `${Math.max(0, (simulation.snapshots[0]?.lanes.length ?? 0) - 1)} gap columns · ${finishedAngle}° slant · ${finishedTip}° tip · ${mirrorFace} face · development`
                 : `fixed lanes · ${mirrorFace} display · 1 repeat`}</span>
@@ -319,7 +319,7 @@ palette: A=#d3a448, B=#77b6c9, C=#d76b52
             ) : view === 'finished-v1' ? (
               <p className="finished-caption">Finished v1 shows one sharp splittee-coloured cell per split. Cells with the same lean touch edge to edge; opposite leans can partially overlap or leave open space.</p>
             ) : view === 'finished-v2' ? (
-              <p className="finished-caption">Finished v2 places cells chronologically from top to bottom in each column and never moves one that is already placed. R1 proposes the splitter’s course, R2 proposes the cord’s full-edge join, and R3 pushes only the new cell down when it would overlap a same-lean cell in its column. Opposite leans may overlap or leave space. R4’s half-side role change is used when no R1–R3 constraint applies, while top-to-bottom ordering remains enforced.</p>
+              <p className="finished-caption">The cell chart places cells chronologically from top to bottom in each column and never moves one that is already placed. R1 proposes the splitter’s course, R2 proposes the cord’s full-edge join, and R3 pushes only the new cell down when it would overlap a same-lean cell in its column. Opposite leans may overlap or leave space. R4’s half-side role change is used when no R1–R3 constraint applies, while top-to-bottom ordering remains enforced.</p>
             ) : view === 'finished-dev' ? (
               <p className="finished-caption">Development preview: transition edges extend to their intersection in the neighbouring column, filling the extra triangle with the continuing cord’s colour.</p>
             ) : (
@@ -614,7 +614,7 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
       face: mirrorFace,
       colorForCord: colorFor,
     });
-    downloadJsonFile(`${safeFileName(layoutName)}-finished-v2-layout.json`, document);
+    downloadJsonFile(`${safeFileName(layoutName)}-cell-chart-layout.json`, document);
   };
 
   return (
@@ -630,7 +630,7 @@ function FinishedV2Preview({ simulation, colors, mirrorFace, theta = 30, tipAngl
           tooltip={tooltip}
         />
         <TooltipLayer tooltip={tooltip} />
-        {!simulation.events.length && <div className="empty-canvas">Your finished v2 preview will appear here.</div>}
+        {!simulation.events.length && <div className="empty-canvas">Your cell chart will appear here.</div>}
       </div>
       <div className="finished-layout-export">
         <div>
