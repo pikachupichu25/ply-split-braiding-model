@@ -292,7 +292,7 @@ export default function ColourwayDesigner() {
 
   const openInStudio = () => {
     localStorage.setItem(savedPatternKey, source);
-    window.location.hash = '#/';
+    window.location.hash = '#/studio';
   };
   const download = () => {
     const label = unchanged && presetName ? presetName : 'custom';

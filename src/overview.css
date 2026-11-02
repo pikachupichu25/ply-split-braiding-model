@@ -1,0 +1,35 @@
+/* Overview: the landing page's feed of sample cell charts. */
+.overview-intro { display: grid; gap: 8px; max-width: 1500px; margin: 8px auto 26px; }
+.overview-intro h2 { font-size: clamp(1.6rem, 3vw, 2.3rem); }
+.overview-intro .quiet { max-width: 620px; color: #c7bba1; }
+
+/* CSS columns give the staggered, Pinterest-style feed: each tile keeps its chart's own height. */
+.overview-feed { max-width: 1500px; margin: 0 auto; columns: 4 260px; column-gap: 18px; }
+.overview-tile { display: inline-block; width: 100%; margin: 0 0 18px; overflow: hidden; break-inside: avoid; border: 1px solid rgba(245,233,205,.21); border-radius: 5px; background: #f2e6cc; color: #17293d; box-shadow: 0 14px 40px rgba(6,15,26,.28); transition: transform .18s ease, box-shadow .18s ease; }
+.overview-tile:hover { transform: translateY(-3px); box-shadow: 0 20px 52px rgba(6,15,26,.38); }
+
+.overview-tile-image { position: relative; display: block; width: 100%; overflow: hidden; padding: 0; border: 0; border-bottom: 1px solid rgba(23,41,61,.18); background: linear-gradient(135deg, rgba(23,41,61,.026) 25%, transparent 25%) 0 0/16px 16px, #f3e7cd; cursor: pointer; }
+.overview-tile-image svg { display: block; width: 100%; height: auto; }
+.overview-tile-image .finished-split-cell { cursor: inherit; }
+.overview-tile-image.is-cropped::after { content: ''; position: absolute; inset: auto 0 0; height: 22%; background: linear-gradient(transparent, #f3e7cd); pointer-events: none; }
+.overview-tile-image:focus-visible { outline: 3px solid #d76b52; outline-offset: -3px; }
+.overview-tile-open { position: absolute; z-index: 1; right: 10px; bottom: 10px; padding: 7px 10px; color: #17293d; background: #d3a448; box-shadow: 3px 3px 0 rgba(215,107,82,.75); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: 0; transform: translateY(4px); transition: opacity .15s ease, transform .15s ease; }
+.overview-tile-image:hover .overview-tile-open,
+.overview-tile-image:focus-visible .overview-tile-open { opacity: 1; transform: none; }
+
+.overview-tile-body { display: grid; gap: 6px; padding: 14px 16px 16px; }
+.overview-tile-body h3 { font-size: 1.15rem; line-height: 1.1; }
+.overview-tile-meta { color: #a65342; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.overview-tile-summary { color: #7f6d58; font-size: 11px; line-height: 1.6; }
+.overview-tile-swatches { display: flex; gap: 5px; margin-top: 4px; }
+.overview-tile-swatches span { width: 13px; height: 13px; border: 1px solid rgba(23,41,61,.28); border-radius: 50%; }
+
+@media (hover: none) {
+  .overview-tile-open { opacity: 1; transform: none; }
+}
+@media (max-width: 640px) {
+  .overview-feed { columns: 2 150px; column-gap: 12px; }
+  .overview-tile { margin-bottom: 12px; }
+  .overview-tile-body { padding: 11px 12px 13px; }
+  .overview-tile-summary { display: none; }
+}

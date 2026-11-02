@@ -4,6 +4,7 @@ import App from './App';
 import ExpectedLayoutEditor from './ExpectedLayoutEditor';
 import ColourwayDesigner from './ColourwayDesigner';
 import ModelsExplainer from './ModelsExplainer';
+import Overview from './Overview';
 import './styles.css';
 
 function AppRouter() {
@@ -18,7 +19,8 @@ function AppRouter() {
   if (route === '#/expected-layout') return <ExpectedLayoutEditor />;
   if (route === '#/colour') return <ColourwayDesigner />;
   if (route === '#/models' || route.startsWith('#/models#')) return <ModelsExplainer />;
-  return <App />;
+  if (route === '#/studio') return <App />;
+  return <Overview />;
 }
 
 createRoot(document.getElementById('root')!).render(

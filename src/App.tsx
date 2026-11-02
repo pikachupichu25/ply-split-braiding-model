@@ -115,6 +115,7 @@ export default function App() {
           <h1>SCOT Braid Studio</h1>
         </div>
         <div className="masthead-actions">
+          <a className="expected-layout-link" href="#/">All patterns <span>↖</span></a>
           <a className="expected-layout-link" href="#/colour">Colour a pattern <span>↗</span></a>
           <a className="expected-layout-link" href="#/expected-layout">Expected layout editor <span>↗</span></a>
           <a className="expected-layout-link" href="#/models">How the models work <span>↗</span></a>
